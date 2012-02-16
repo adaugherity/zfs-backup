@@ -37,6 +37,15 @@ PREREQUISITES:
    are backing up, and the associated snapshots -- something like:
   zfs send -R $POOL/$FS@zfs-auto-snap_daily-(latest) | ssh $REMUSER@$REMHOST zfs recv -dvF $REMPOOL
 6. configure the pool/fs/user/host variables in this script
+7. zfs set $PROP={ fullpath | basename } pool/fs
+   for each FS or volume you wish to back up.
+
+PROPERTY VALUES:
+Given the hierarchy pool/a/b,
+* with 'fullpath' (zfs recv -d), this is replicated to backupserver:backuppool/a/b
+* with 'basename' (zfs recv -e), this is replicated to backupserver:backuppool/b
+  This is useful for replicating a sub-level FS into the top level of the backup pool;
+  e.g. pool/backup/foo => backuppool/foo (instead of backuppool/backup/foo)
 
 If this backup is not run for a long enough period that the newest
 remote snapshot has been removed locally, manually run an incremental

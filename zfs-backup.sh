@@ -177,6 +177,10 @@ FAIL=0
 while read dataset value
 do
     case $value in
+    # property values:
+    #   Given the hierarchy pool/a/b,
+    #   * fullpath: replicate to backuppool/a/b
+    #   * basename: replicate to backuppool/b
 	fullpath) [ $VERBOSE ] && echo "\n$dataset:"
 	    do_backup $dataset -d
 		;;
