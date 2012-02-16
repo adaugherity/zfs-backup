@@ -1,0 +1,58 @@
+This is a backup script to replicate a ZFS filesystem and its children to
+another server via zfs snapshots and zfs send/receive over ssh.  It was
+developed on Solaris 10 but should run with minor modification on other
+platforms with ZFS support.
+
+It supplements zfs-auto-snapshot, but runs independently.  I prefer that
+snapshots continue to be taken even if the backup fails.  It does not
+necessarily require that package -- anything that regularly generates
+snapshots that follow a given pattern will suffice.
+
+
+Basic installation: After following the prerequisites, run manually to verify
+operation, and then add a line like the following to zfssnap's crontab:
+30 * * * * /path/to/zfs-backup.sh
+(This for an hourly sync -- adjust accordingly if you only want to back up
+daily, etc.)
+
+This aims to be much more robust than the backup functionality of
+zfs-auto-snapshot, namely:
+* it uses 'zfs send -I' to send all intermediate snapshots (including
+  any daily/weekly/etc.), and should still work even if it isn't run
+  every hour -- as long as the newest remote snapshot hasn't been
+  rotated out locally yet
+* 'zfs recv -dF' on the destination host removes any snapshots not
+  present locally so you don't have to worry about manually removing
+  old snapshots there.
+
+PREREQUISITES:
+1. zfs-auto-snapshot package installed locally and at least hourly
+   snapshots enabled (or daily, etc.)
+2. home directory set for zfssnap role
+3. ssh keys set up between zfssnap@localhost and remuser@remhost
+4. zfs allow done for remuser on remhost
+  (see http://mail.opensolaris.org/pipermail/zfs-auto-snapshot/2009-November/000198.html
+  for guidance on #2-4)
+5. an initial (full) zfs send/receive done so that remhost has the fs we
+   are backing up, and the associated snapshots -- something like:
+  zfs send -R $POOL/$FS@zfs-auto-snap_daily-(latest) | ssh $REMUSER@$REMHOST zfs recv -dvF $REMPOOL
+6. configure the pool/fs/user/host variables in this script
+
+If this backup is not run for a long enough period that the newest
+remote snapshot has been removed locally, manually run an incremental
+zfs send/recv to bring it up to date, a la
+  zfs send -I zfs-auto-snap_daily-(latest on remote) -R $POOL/$FS@zfs-auto-snap_daily-(latest local) |
+      ssh $REMUSER@REMHOST zfs recv -dvF $REMPOOL
+It's probably best to do a dry-run first (zfs recv -ndvF).
+
+Note: I use daily snapshots in these manual send/recv examples because
+it is less likely that the snapshot you are using will be rotated out
+in the middle of a send.  Also, ZFS will send all snapshots for a given
+filesystem before sending any for its children.
+
+PROCEDURE:
+  * find newest local hourly snapshot
+  * find newest remote hourly snapshot (via ssh)
+  * check that both $newest_local and $latest_remote snaps exist locally
+  * zfs send incremental (-I) from $newest_remote to $latest_local to dsthost
+  * if anything fails, set svc to maint. and exit
