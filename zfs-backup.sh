@@ -104,7 +104,7 @@ do_backup() {
     if [ -z $newest_remote ]; then
 	echo "Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST." >&2
 	[ $DEBUG ] || touch $LOCK
-	return 0
+	return 1
     fi
     snap1=${newest_remote#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "newest remote snapshot: $snap1"
@@ -120,7 +120,6 @@ do_backup() {
 	[ $DEBUG ] || touch $LOCK
 	return 1
     fi
-return 0
     if ! /usr/sbin/zfs list -t snapshot -H $DATASET@$snap2 > /dev/null 2>&1; then
 	exec 1>&2
 	echo "Something has gone horribly wrong -- local snapshot $snap2"
