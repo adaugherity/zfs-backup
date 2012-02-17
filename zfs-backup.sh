@@ -100,7 +100,7 @@ do_backup() {
     [ "$DEBUG" -o "$VERBOSE" ] && echo "newest local snapshot: $snap2"
 
     # needs public key auth configured beforehand
-    newest_remote="$(ssh $REMUSER@$REMHOST /usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
+    newest_remote="$(ssh -n $REMUSER@$REMHOST /usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
     if [ -z $newest_remote ]; then
 	echo "Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST." >&2
 	[ $DEBUG ] || touch $LOCK
