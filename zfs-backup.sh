@@ -54,10 +54,10 @@
 #   * zfs send incremental (-I) from $newest_remote to $latest_local to dsthost
 #   * if anything fails, set svc to maint. and exit
 
-DEBUG="1"		# set to non-null to enable debug (dry-run)
-VERBOSE="-v"		# "-v" for verbose, null string for quiet
+DEBUG=""		# set to non-null to enable debug (dry-run)
+VERBOSE=""		# "-v" for verbose, null string for quiet
 LOCK="/var/tmp/zfsbackup.lock"
-CFG="./zfs-backup.cfg"
+CFG="/var/lib/zfssnap/zfs-backup.cfg"
 
 # local settings -- datasets to back up are now found by property
 TAG="zfs-auto-snap_daily"
@@ -137,7 +137,7 @@ do_backup() {
 	echo "would run: /usr/sbin/zfs send -R -I $snap1 $DATASET@$snap2 |"
 	echo "  ssh $REMUSER@$REMHOST /usr/sbin/zfs recv $RECV_OPT -vF $REMPOOL"
     else
-	if ! /usr/sbin/zfs send -R -I $snap1 $DATASET@$snap2 | \
+	if ! pfexec /usr/sbin/zfs send -R -I $snap1 $DATASET@$snap2 | \
 	  ssh $REMUSER@$REMHOST /usr/sbin/zfs recv $VERBOSE $RECV_OPT -F $REMPOOL; then
 	    echo 1>&2 "Error sending snapshot."
 	    touch $LOCK
@@ -150,7 +150,7 @@ do_backup() {
 if [ -e $LOCK ]; then
     # this would be nicer as SMF maintenance state
     if [ -s $LOCK  ]; then
-	# in normal mode, only send one email about the failure, not every hour
+	# in normal mode, only send one email about the failure, not every run
 	if [ "$VERBOSE" ]; then
             echo "Service is in maintenance state; please correct and then"
             echo "rm $LOCK before running again."
@@ -172,7 +172,7 @@ fi
 
 FAIL=0
 # get the datasets that have our backup property set
-/usr/sbin/zfs get -s local -H -o name,value $PROP | \
+/usr/sbin/zfs get -s local -H -o name,value $PROP |
 while read dataset value
 do
     case $value in
