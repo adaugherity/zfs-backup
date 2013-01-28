@@ -172,6 +172,12 @@ fi
 
 FAIL=0
 # get the datasets that have our backup property set
+COUNT=$(/usr/sbin/zfs get -s local -H -o name,value $PROP | wc -l)
+if [ $COUNT -lt 1 ]; then
+    echo "No datasets configured for backup!  Please set the '$PROP' property"
+    echo "appropriately on the datasets you wish to back up."
+    exit 2
+fi
 /usr/sbin/zfs get -s local -H -o name,value $PROP |
 while read dataset value
 do
