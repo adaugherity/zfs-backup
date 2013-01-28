@@ -7,7 +7,7 @@
 # SMF manifests welcome!
 # v0.2 - multiple datasets
 
-# Copyright (c) 2009-12 Andrew Daugherity <adaugherity@tamu.edu>
+# Copyright (c) 2009-13 Andrew Daugherity <adaugherity@tamu.edu>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without

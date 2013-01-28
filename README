@@ -26,18 +26,21 @@ zfs-auto-snapshot, namely:
   old snapshots there.
 
 PREREQUISITES:
-1. zfs-auto-snapshot package installed locally and at least hourly
-   snapshots enabled (or daily, etc.)
+1. zfs-auto-snapshot or equivalent package installed locally and regular
+   snapshots enabled (hourly, daily, etc.)
 2. home directory set for zfssnap role
 3. ssh keys set up between zfssnap@localhost and remuser@remhost
 4. zfs allow done for remuser on remhost
   (see http://mail.opensolaris.org/pipermail/zfs-auto-snapshot/2009-November/000198.html
-  for guidance on #2-4)
+  for guidance on #2-4; you may need to also allow further permissions such as
+  sharenfs, userprop, hold, etc.)
 5. an initial (full) zfs send/receive done so that remhost has the fs we
    are backing up, and the associated snapshots -- something like:
   zfs send -R $POOL/$FS@zfs-auto-snap_daily-(latest) | ssh $REMUSER@$REMHOST zfs recv -dvF $REMPOOL
-6. configure the pool/fs/user/host variables in this script
-7. zfs set $PROP={ fullpath | basename } pool/fs
+6. zfs allow any additional permissions needed, to fix any errors produced in step 5
+7. configure the tag/prop/remuser/remhost/rempool variables in this script or in a config file
+  (and update the CFG=... line accordingly)
+8. zfs set $PROP={ fullpath | basename } pool/fs
    for each FS or volume you wish to back up.
 
 PROPERTY VALUES:
