@@ -5,7 +5,10 @@
 # server via zfs snapshots and zfs send/receive
 #
 # SMF manifests welcome!
+#
+# v0.3 - cmdline options and cfg file support
 # v0.2 - multiple datasets
+# v0.1 - initial working version
 
 # Copyright (c) 2009-13 Andrew Daugherity <adaugherity@tamu.edu>
 # All rights reserved.
@@ -112,7 +115,7 @@ fi
 # If file is in current directory, add ./ to make sure the correct file is sourced
 if [ `basename $CFG` = "$CFG" ]; then
     CFG="./$CFG"
-fi 
+fi
 # Read any settings from a config file, if present
 if [ -r $CFG ]; then
     . $CFG
