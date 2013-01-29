@@ -54,6 +54,7 @@
 #   * zfs send incremental (-I) from $newest_remote to $latest_local to dsthost
 #   * if anything fails, set svc to maint. and exit
 
+# all of the following variables (except CFG) may be set in the config file
 DEBUG=""		# set to non-null to enable debug (dry-run)
 VERBOSE=""		# "-v" for verbose, null string for quiet
 LOCK="/var/tmp/zfsbackup.lock"
@@ -67,10 +68,48 @@ REMUSER="zfsbak"
 REMHOST="backupserver.my.domain"
 REMPOOL="backuppool"
 
+
+usage() {
+    echo "Usage: $(basename $0) [ -nv ] [-r N ] [ [-f] cfg_file ]"
+    echo "  -n\t\tdebug (dry-run) mode"
+    echo "  -v\t\tverbose mode"
+    echo "  -f\t\tspecify a configuration file"
+    echo "If the configuration file is last option specified, the -f flag is optional."
+    exit 1
+}
+
+# Option parsing
+set -- $(getopt h?nvf:r: $*)
+if [ $? -ne 0 ]; then
+    usage
+fi
+for opt; do
+    case $opt in
+	-h|-\?) usage;;
+	-n) dbg_flag=Y; shift;;
+	-v) verb_flag=Y; shift;;
+	-f) CFG=$2; shift 2;;
+	--) shift; break;;
+    esac
+done
+if [ $# -gt 1 ]; then
+    usage
+elif [ $# -eq 1 ]; then
+    CFG=$1
+fi
+# If file is in current directory, add ./ to make sure the correct file is sourced
+if [ `basename $CFG` = "$CFG" ]; then
+    CFG="./$CFG"
+fi 
 # Read any settings from a config file, if present
 if [ -r $CFG ]; then
     . $CFG
 fi
+# Set options now, so cmdline opts override the cfg file
+[ "$dbg_flag" ] && DEBUG=1
+[ "$verb_flag" ] && VERBOSE="-v"
+# set default value so integer tests work
+if [ -z "$RECENT" ]; then RECENT=0; fi
 
 # Usage: do_backup pool/fs/to/backup receive_option
 #   receive_option should be -d for full path and -e for base name
@@ -163,11 +202,6 @@ if [ -e $LOCK ]; then
         echo "rm $LOCK before running again."
     fi
     exit 2
-fi
-
-# allow enabling verbose mode from the command line
-if [ "$1" = "-v" ]; then
-    VERBOSE=$1
 fi
 
 FAIL=0
