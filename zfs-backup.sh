@@ -74,8 +74,19 @@ usage() {
     echo "  -n\t\tdebug (dry-run) mode"
     echo "  -v\t\tverbose mode"
     echo "  -f\t\tspecify a configuration file"
+    echo "  -r N\t\tuse the Nth most recent snapshot instead of the newest"
     echo "If the configuration file is last option specified, the -f flag is optional."
     exit 1
+}
+# simple ordinal function, does not validate input
+ord() {
+    case $1 in
+        1|*[0,2-9]1) echo "$1st";;
+        2|*[0,2-9]2) echo "$1nd";;
+        3|*[0,2-9]3) echo "$1rd";;
+        *1[123]|*[0,4-9]) echo "$1th";;
+        *) echo $1;;
+    esac
 }
 
 # Option parsing
@@ -89,6 +100,7 @@ for opt; do
 	-n) dbg_flag=Y; shift;;
 	-v) verb_flag=Y; shift;;
 	-f) CFG=$2; shift 2;;
+	-r) recent_flag=$2; shift 2;;
 	--) shift; break;;
     esac
 done
@@ -108,6 +120,7 @@ fi
 # Set options now, so cmdline opts override the cfg file
 [ "$dbg_flag" ] && DEBUG=1
 [ "$verb_flag" ] && VERBOSE="-v"
+[ "$recent_flag" ] && RECENT=$recent_flag
 # set default value so integer tests work
 if [ -z "$RECENT" ]; then RECENT=0; fi
 
@@ -134,9 +147,15 @@ do_backup() {
 	return 2
     fi
 
-    newest_local="$(/usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
+    if [ $RECENT -gt 1 ]; then
+	newest_local="$(/usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | awk NR==$RECENT)"
+	msg="using local snapshot ($(ord $RECENT) most recent):"
+    else
+	newest_local="$(/usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
+	msg="newest local snapshot:"
+    fi
     snap2=${newest_local#*@}
-    [ "$DEBUG" -o "$VERBOSE" ] && echo "newest local snapshot: $snap2"
+    [ "$DEBUG" -o "$VERBOSE" ] && echo "$msg $snap2"
 
     # needs public key auth configured beforehand
     newest_remote="$(ssh -n $REMUSER@$REMHOST /usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
@@ -170,6 +189,15 @@ do_backup() {
     if [ "$snap1" = "$snap2" ]; then
 	[ $VERBOSE ] && echo "Remote snapshot is the same as local; not running."
 	return 0
+    fi
+
+    # sanity checking of snapshot times -- avoid going too far back with -r
+    snap1time=$(zfs get -Hp -o value creation $DATASET@$snap1)
+    snap2time=$(zfs get -Hp -o value creation $DATASET@$snap2)
+    if [ $snap2time -lt $snap1time ]; then
+	echo "Error: target snapshot $snap2 is older than $snap1!"
+	echo "Did you go too far back with '-r'?"
+	return 1
     fi
 
     if [ $DEBUG ]; then

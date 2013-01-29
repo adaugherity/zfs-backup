@@ -8,12 +8,22 @@ snapshots continue to be taken even if the backup fails.  It does not
 necessarily require that package -- anything that regularly generates
 snapshots that follow a given pattern will suffice.
 
+Command-line options:
+  -n		debug/dry-run mode
+  -v		verbose mode
+  -f file	specify a configuration file
+  -r N		use the Nth most recent local snapshot rather than the newest
+  -h, -?	display help message
+
 
 Basic installation: After following the prerequisites, run manually to verify
 operation, and then add a line like the following to zfssnap's crontab:
-30 * * * * /path/to/zfs-backup.sh
+30 * * * * /path/to/zfs-backup.sh [ options ]
 (This for an hourly sync -- adjust accordingly if you only want to back up
-daily, etc.)
+daily, etc.  zfs-backup now supports commandline options and configuration
+files, so you can schedule different cron jobs with different config files,
+e.g. to back up to two different targets.  If you schedule multiple cron
+jobs, you should use different lockfiles in each configuration.)
 
 This aims to be much more robust than the backup functionality of
 zfs-auto-snapshot, namely:
@@ -27,21 +37,23 @@ zfs-auto-snapshot, namely:
 
 PREREQUISITES:
 1. zfs-auto-snapshot or equivalent package installed locally and regular
-   snapshots enabled (hourly, daily, etc.)
-2. home directory set for zfssnap role
+  snapshots enabled (hourly, daily, etc.)
+2. home directory set for zfssnap role (the user taking snapshots and doing
+  the sending)
 3. ssh keys set up between zfssnap@localhost and remuser@remhost
 4. zfs allow done for remuser on remhost
   (see http://mail.opensolaris.org/pipermail/zfs-auto-snapshot/2009-November/000198.html
   for guidance on #2-4; you may need to also allow further permissions such as
   sharenfs, userprop, hold, etc.)
 5. an initial (full) zfs send/receive done so that remhost has the fs we
-   are backing up, and the associated snapshots -- something like:
+  are backing up, and the associated snapshots -- something like:
   zfs send -R $POOL/$FS@zfs-auto-snap_daily-(latest) | ssh $REMUSER@$REMHOST zfs recv -dvF $REMPOOL
+  Note: 'zfs send -R' will send *all* snapshots associated with a dataset, so
+  if you wish to purge old snapshots, do that first.
 6. zfs allow any additional permissions needed, to fix any errors produced in step 5
 7. configure the tag/prop/remuser/remhost/rempool variables in this script or in a config file
-  (and update the CFG=... line accordingly)
 8. zfs set $PROP={ fullpath | basename } pool/fs
-   for each FS or volume you wish to back up.
+  for each FS or volume you wish to back up.
 
 PROPERTY VALUES:
 Given the hierarchy pool/a/b,
@@ -59,8 +71,15 @@ It's probably best to do a dry-run first (zfs recv -ndvF).
 
 Note: I use daily snapshots in these manual send/recv examples because
 it is less likely that the snapshot you are using will be rotated out
-in the middle of a send.  Also, ZFS will send all snapshots for a given
-filesystem before sending any for its children.
+in the middle of a send.  Also, note that ZFS will send all snapshots for a
+given filesystem before sending any for its children, rather than going in
+global date order.
+
+Alternatively, use a different tag (e.g. weekly) that still has common
+snapshots, possibly in combination with the -r option (Nth most recent) to
+avoid short-lived snapshots (e.g. hourly) being rotated out in the middle
+of your sync.  This is a good use case for an alternate configuration file.
+
 
 PROCEDURE:
   * find newest local hourly snapshot
