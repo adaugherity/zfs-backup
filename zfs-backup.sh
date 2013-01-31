@@ -195,8 +195,8 @@ do_backup() {
     fi
 
     # sanity checking of snapshot times -- avoid going too far back with -r
-    snap1time=$(zfs get -Hp -o value creation $DATASET@$snap1)
-    snap2time=$(zfs get -Hp -o value creation $DATASET@$snap2)
+    snap1time=$(/usr/sbin/zfs get -Hp -o value creation $DATASET@$snap1)
+    snap2time=$(/usr/sbin/zfs get -Hp -o value creation $DATASET@$snap2)
     if [ $snap2time -lt $snap1time ]; then
 	echo "Error: target snapshot $snap2 is older than $snap1!"
 	echo "Did you go too far back with '-r'?"
