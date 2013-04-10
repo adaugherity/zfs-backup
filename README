@@ -51,7 +51,7 @@ PREREQUISITES:
   Note: 'zfs send -R' will send *all* snapshots associated with a dataset, so
   if you wish to purge old snapshots, do that first.
 6. zfs allow any additional permissions needed, to fix any errors produced in step 5
-7. configure the tag/prop/remuser/remhost/rempool variables in this script or in a config file
+7. configure the TAG/PROP/REMUSER/REMHOST/REMPOOL variables in this script or in a config file
 8. zfs set $PROP={ fullpath | basename } pool/fs
   for each FS or volume you wish to back up.
 
