@@ -39,12 +39,19 @@ PREREQUISITES:
 1. zfs-auto-snapshot or equivalent package installed locally and regular
   snapshots enabled (hourly, daily, etc.)
 2. home directory set for zfssnap role (the user taking snapshots and doing
-  the sending)
-3. ssh keys set up between zfssnap@localhost and remuser@remhost
-4. zfs allow done for remuser on remhost
-  (see http://mail.opensolaris.org/pipermail/zfs-auto-snapshot/2009-November/000198.html
-  for guidance on #2-4; you may need to also allow further permissions such as
-  sharenfs, userprop, hold, etc.)
+  the sending):
+  # rolemod -d /path/to/home zfssnap
+3. ssh keys set up between zfssnap@localhost and remuser@remhost:
+  # su - zfssnap
+  $ ssh-keygen
+  Copy the contents of .ssh/id_rsa.pub into ~remuser/.ssh/authorized_keys on
+  remhost.  Test that key-based ssh works:
+  $ ssh remuser@remhost
+4. zfs allow done for remuser on remhost:
+  # zfs allow remuser atime,create,destroy,mount,mountpoint,receive,rollback,snapshot,userprop backuppool/fs
+  This can be done on a top-level filesystem, and is inherited by default.
+  Depending on your usage, you may need to also allow further permissions such
+  as share, sharenfs, hold, etc.
 5. an initial (full) zfs send/receive done so that remhost has the fs we
   are backing up, and the associated snapshots -- something like:
   zfs send -R $POOL/$FS@zfs-auto-snap_daily-(latest) | ssh $REMUSER@$REMHOST zfs recv -dvF $REMPOOL
