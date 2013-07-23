@@ -113,7 +113,7 @@ elif [ $# -eq 1 ]; then
     CFG=$1
 fi
 # If file is in current directory, add ./ to make sure the correct file is sourced
-if [ `basename $CFG` = "$CFG" ]; then
+if [ $(basename $CFG) = "$CFG" ]; then
     CFG="./$CFG"
 fi
 # Read any settings from a config file, if present
