@@ -12,6 +12,8 @@ Command-line options:
   -n		debug/dry-run mode
   -v		verbose mode
   -f file	specify a configuration file
+  -l 		local mode (skip ssh)
+  -p 		path to ZFS
   -r N		use the Nth most recent local snapshot rather than the newest
   -h, -?	display help message
 
@@ -58,7 +60,7 @@ PREREQUISITES:
   Note: 'zfs send -R' will send *all* snapshots associated with a dataset, so
   if you wish to purge old snapshots, do that first.
 6. zfs allow any additional permissions needed, to fix any errors produced in step 5
-7. configure the TAG/PROP/REMUSER/REMHOST/REMPOOL variables in this script or in a config file
+7. configure the TAG/PROP/LOCAL/ZFSPATH/REMUSER/REMHOST/REMPOOL variables in this script or in a config file
 8. zfs set $PROP={ fullpath | basename } pool/fs
   for each FS or volume you wish to back up.
 
@@ -90,7 +92,7 @@ of your sync.  This is a good use case for an alternate configuration file.
 
 PROCEDURE:
   * find newest local hourly snapshot
-  * find newest remote hourly snapshot (via ssh)
+  * find newest remote hourly snapshot (via ssh or local)
   * check that both $newest_local and $latest_remote snaps exist locally
-  * zfs send incremental (-I) from $newest_remote to $latest_local to dsthost
+  * zfs send incremental (-I) from $newest_remote to $latest_local to dsthost 
   * if anything fails, set svc to maint. and exit

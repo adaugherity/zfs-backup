@@ -1,4 +1,4 @@
-#!/bin/ksh
+#!/bin/bash
 # /usr/xpg4/bin/sh and /bin/bash also work; /bin/sh does not
 
 # backup script to replicate a ZFS filesystem and its children to another
@@ -67,17 +67,21 @@ CFG="/var/lib/zfssnap/zfs-backup.cfg"
 TAG="zfs-auto-snap_daily"
 PROP="edu.tamu:backuptarget"
 # remote settings (on destination host)
+LOCAL=""
 REMUSER="zfsbak"
 REMHOST="backupserver.my.domain"
 REMPOOL="backuppool"
 
+ZFSPATH="/usr/sbin/zfs"
 
 usage() {
     echo "Usage: $(basename $0) [ -nv ] [-r N ] [ [-f] cfg_file ]"
     echo "  -n\t\tdebug (dry-run) mode"
     echo "  -v\t\tverbose mode"
+    echo "  -l\t\tlocal backups only (skip ssh)"
     echo "  -f\t\tspecify a configuration file"
     echo "  -r N\t\tuse the Nth most recent snapshot instead of the newest"
+    echo "  -p\t\tpath to zfs executable"
     echo "If the configuration file is last option specified, the -f flag is optional."
     exit 1
 }
@@ -93,7 +97,7 @@ ord() {
 }
 
 # Option parsing
-set -- $(getopt h?nvf:r: $*)
+set -- $(getopt h?nvlfp:r: $*)
 if [ $? -ne 0 ]; then
     usage
 fi
@@ -102,7 +106,9 @@ for opt; do
 	-h|-\?) usage;;
 	-n) dbg_flag=Y; shift;;
 	-v) verb_flag=Y; shift;;
+	-l) stay_local=Y; shift;;
 	-f) CFG=$2; shift 2;;
+        -p) path=$2; shift 2;;
 	-r) recent_flag=$2; shift 2;;
 	--) shift; break;;
     esac
@@ -123,9 +129,22 @@ fi
 # Set options now, so cmdline opts override the cfg file
 [ "$dbg_flag" ] && DEBUG=1
 [ "$verb_flag" ] && VERBOSE="-v"
+[ "$stay_local" ] && LOCAL=1
 [ "$recent_flag" ] && RECENT=$recent_flag
+[ "$path" ] && ZFSPATH=$path
 # set default value so integer tests work
 if [ -z "$RECENT" ]; then RECENT=0; fi
+
+if [ $DEBUG ]; then
+   echo "Variable:	Value"
+   echo "LOCAL:		$LOCAL"
+   echo "RECENT: 	$RECENT"
+   echo "PATH:		$ZFSPATH"
+   echo "CFG:		$CFG"
+   echo "REMPOOL: 	$REMPOOL"
+   echo "REMUSER: 	$REMUSER"
+   echo "REMHOST:	$REMHOST"
+fi
 
 # Usage: do_backup pool/fs/to/backup receive_option
 #   receive_option should be -d for full path and -e for base name
@@ -151,26 +170,32 @@ do_backup() {
     fi
 
     if [ $RECENT -gt 1 ]; then
-	newest_local="$(/usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | awk NR==$RECENT)"
+	newest_local="$($ZFSPATH list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | awk NR==$RECENT)"
 	msg="using local snapshot ($(ord $RECENT) most recent):"
     else
-	newest_local="$(/usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
+	newest_local="$($ZFSPATH list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
 	msg="newest local snapshot:"
     fi
     snap2=${newest_local#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "$msg $snap2"
 
+    #if using ssh use this command
+    locality=""
+    if [ ! $LOCAL ]; then
+	locality="ssh -n $REMUSER@$REMHOST "
+    fi
+
     # needs public key auth configured beforehand
-    newest_remote="$(ssh -n $REMUSER@$REMHOST /usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
+    newest_remote="$($locality$ZFSPATH list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
     if [ -z $newest_remote ]; then
-	echo "Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST." >&2
+	echo "Error fetching remote snapshot listing." >&2
 	[ $DEBUG ] || touch $LOCK
 	return 1
     fi
     snap1=${newest_remote#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "newest remote snapshot: $snap1"
 
-    if ! /usr/sbin/zfs list -t snapshot -H $DATASET@$snap1 > /dev/null 2>&1; then
+    if ! $ZFSPATH list -t snapshot -H $DATASET@$snap1 > /dev/null 2>&1; then
 	exec 1>&2
 	echo "Newest remote snapshot '$snap1' does not exist locally!"
 	echo "Perhaps it has been already rotated out."
@@ -181,7 +206,7 @@ do_backup() {
 	[ $DEBUG ] || touch $LOCK
 	return 1
     fi
-    if ! /usr/sbin/zfs list -t snapshot -H $DATASET@$snap2 > /dev/null 2>&1; then
+    if ! $ZFSPATH list -t snapshot -H $DATASET@$snap2 > /dev/null 2>&1; then
 	exec 1>&2
 	echo "Something has gone horribly wrong -- local snapshot $snap2"
 	echo "has suddenly disappeared!"
@@ -195,8 +220,8 @@ do_backup() {
     fi
 
     # sanity checking of snapshot times -- avoid going too far back with -r
-    snap1time=$(/usr/sbin/zfs get -Hp -o value creation $DATASET@$snap1)
-    snap2time=$(/usr/sbin/zfs get -Hp -o value creation $DATASET@$snap2)
+    snap1time=$($ZFSPATH get -Hp -o value creation $DATASET@$snap1)
+    snap2time=$($ZFSPATH get -Hp -o value creation $DATASET@$snap2)
     if [ $snap2time -lt $snap1time ]; then
 	echo "Error: target snapshot $snap2 is older than $snap1!"
 	echo "Did you go too far back with '-r'?"
@@ -204,11 +229,11 @@ do_backup() {
     fi
 
     if [ $DEBUG ]; then
-	echo "would run: /usr/sbin/zfs send -R -I $snap1 $DATASET@$snap2 |"
-	echo "  ssh $REMUSER@$REMHOST /usr/sbin/zfs recv $RECV_OPT -vF $REMPOOL"
+	echo "would run: $ZFSPATH send -R -I $snap1 $DATASET@$snap2 |"
+	echo "  $locality$ZFSPATH recv $RECV_OPT -vF $REMPOOL"
     else
-	if ! pfexec /usr/sbin/zfs send -R -I $snap1 $DATASET@$snap2 | \
-	  ssh $REMUSER@$REMHOST /usr/sbin/zfs recv $VERBOSE $RECV_OPT -F $REMPOOL; then
+	if ! pfexec $ZFSPATH send -R -I $snap1 $DATASET@$snap2 | \
+	  $locality$ZFSPATH recv $VERBOSE $RECV_OPT -F $REMPOOL; then
 	    echo 1>&2 "Error sending snapshot."
 	    touch $LOCK
 	    return 1
@@ -237,13 +262,13 @@ fi
 
 FAIL=0
 # get the datasets that have our backup property set
-COUNT=$(/usr/sbin/zfs get -s local -H -o name,value $PROP | wc -l)
+COUNT=$($ZFSPATH get -s local -H -o name,value $PROP | wc -l)
 if [ $COUNT -lt 1 ]; then
     echo "No datasets configured for backup!  Please set the '$PROP' property"
     echo "appropriately on the datasets you wish to back up."
     exit 2
 fi
-/usr/sbin/zfs get -s local -H -o name,value $PROP |
+$ZFSPATH get -s local -H -o name,value $PROP |
 while read dataset value
 do
     case $value in
