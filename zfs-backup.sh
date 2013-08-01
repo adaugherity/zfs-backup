@@ -188,7 +188,7 @@ do_backup() {
     # needs public key auth configured beforehand
     newest_remote="$($locality$ZFSPATH list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
     if [ -z $newest_remote ]; then
-	echo "Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST." >&2
+	echo "Error fetching remote snapshot listing." >&2
 	[ $DEBUG ] || touch $LOCK
 	return 1
     fi
@@ -230,7 +230,7 @@ do_backup() {
 
     if [ $DEBUG ]; then
 	echo "would run: $ZFSPATH send -R -I $snap1 $DATASET@$snap2 |"
-	echo "  ssh $REMUSER@$REMHOST $ZFSPATH recv $RECV_OPT -vF $REMPOOL"
+	echo "  $locality$ZFSPATH recv $RECV_OPT -vF $REMPOOL"
     else
 	if ! pfexec $ZFSPATH send -R -I $snap1 $DATASET@$snap2 | \
 	  $locality$ZFSPATH recv $VERBOSE $RECV_OPT -F $REMPOOL; then
