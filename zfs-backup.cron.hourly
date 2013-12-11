@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /bin/bash zfs-backup -f /etc/default/zfs-backup
