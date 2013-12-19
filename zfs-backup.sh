@@ -62,6 +62,7 @@ DEBUG=""		# set to non-null to enable debug (dry-run)
 VERBOSE=""		# "-v" for verbose, null string for quiet
 LOCK="/var/tmp/zfsbackup.lock"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
+ZFS="/usr/sbin/zfs"
 
 # local settings -- datasets to back up are now found by property
 TAG="zfs-auto-snap_daily"
@@ -70,6 +71,7 @@ PROP="edu.tamu:backuptarget"
 REMUSER="zfsbak"
 REMHOST="backupserver.my.domain"
 REMPOOL="backuppool"
+REMZFS="/usr/sbin/zfs"
 
 
 usage() {
@@ -151,17 +153,17 @@ do_backup() {
     fi
 
     if [ $RECENT -gt 1 ]; then
-	newest_local="$(/usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | awk NR==$RECENT)"
+	newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | awk NR==$RECENT)"
 	msg="using local snapshot ($(ord $RECENT) most recent):"
     else
-	newest_local="$(/usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
+	newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
 	msg="newest local snapshot:"
     fi
     snap2=${newest_local#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "$msg $snap2"
 
     # needs public key auth configured beforehand
-    newest_remote="$(ssh -n $REMUSER@$REMHOST /usr/sbin/zfs list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
+    newest_remote="$(ssh -n $REMUSER@$REMHOST $REMZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
     if [ -z $newest_remote ]; then
 	echo "Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST." >&2
 	[ $DEBUG ] || touch $LOCK
@@ -170,7 +172,7 @@ do_backup() {
     snap1=${newest_remote#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "newest remote snapshot: $snap1"
 
-    if ! /usr/sbin/zfs list -t snapshot -H $DATASET@$snap1 > /dev/null 2>&1; then
+    if ! $ZFS list -t snapshot -H $DATASET@$snap1 > /dev/null 2>&1; then
 	exec 1>&2
 	echo "Newest remote snapshot '$snap1' does not exist locally!"
 	echo "Perhaps it has been already rotated out."
@@ -181,7 +183,7 @@ do_backup() {
 	[ $DEBUG ] || touch $LOCK
 	return 1
     fi
-    if ! /usr/sbin/zfs list -t snapshot -H $DATASET@$snap2 > /dev/null 2>&1; then
+    if ! $ZFS list -t snapshot -H $DATASET@$snap2 > /dev/null 2>&1; then
 	exec 1>&2
 	echo "Something has gone horribly wrong -- local snapshot $snap2"
 	echo "has suddenly disappeared!"
@@ -195,8 +197,8 @@ do_backup() {
     fi
 
     # sanity checking of snapshot times -- avoid going too far back with -r
-    snap1time=$(/usr/sbin/zfs get -Hp -o value creation $DATASET@$snap1)
-    snap2time=$(/usr/sbin/zfs get -Hp -o value creation $DATASET@$snap2)
+    snap1time=$($ZFS get -Hp -o value creation $DATASET@$snap1)
+    snap2time=$($ZFS get -Hp -o value creation $DATASET@$snap2)
     if [ $snap2time -lt $snap1time ]; then
 	echo "Error: target snapshot $snap2 is older than $snap1!"
 	echo "Did you go too far back with '-r'?"
@@ -204,11 +206,11 @@ do_backup() {
     fi
 
     if [ $DEBUG ]; then
-	echo "would run: /usr/sbin/zfs send -R -I $snap1 $DATASET@$snap2 |"
-	echo "  ssh $REMUSER@$REMHOST /usr/sbin/zfs recv $RECV_OPT -vF $REMPOOL"
+	echo "would run: $ZFS send -R -I $snap1 $DATASET@$snap2 |"
+	echo "  ssh $REMUSER@$REMHOST $REMZFS recv $RECV_OPT -vF $REMPOOL"
     else
-	if ! pfexec /usr/sbin/zfs send -R -I $snap1 $DATASET@$snap2 | \
-	  ssh $REMUSER@$REMHOST /usr/sbin/zfs recv $VERBOSE $RECV_OPT -F $REMPOOL; then
+	if ! pfexec $ZFS send -R -I $snap1 $DATASET@$snap2 | \
+	  ssh $REMUSER@$REMHOST $REMZFS recv $VERBOSE $RECV_OPT -F $REMPOOL; then
 	    echo 1>&2 "Error sending snapshot."
 	    touch $LOCK
 	    return 1
@@ -237,13 +239,13 @@ fi
 
 FAIL=0
 # get the datasets that have our backup property set
-COUNT=$(/usr/sbin/zfs get -s local -H -o name,value $PROP | wc -l)
+COUNT=$($ZFS get -s local -H -o name,value $PROP | wc -l)
 if [ $COUNT -lt 1 ]; then
     echo "No datasets configured for backup!  Please set the '$PROP' property"
     echo "appropriately on the datasets you wish to back up."
     exit 2
 fi
-/usr/sbin/zfs get -s local -H -o name,value $PROP |
+$ZFS get -s local -H -o name,value $PROP |
 while read dataset value
 do
     case $value in
