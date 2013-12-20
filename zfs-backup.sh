@@ -61,7 +61,7 @@
 DEBUG=""		# set to non-null to enable debug (dry-run)
 VERBOSE=""		# "-v" for verbose, null string for quiet
 LOCK="/var/tmp/zfsbackup.lock"
-PID="/var/run/zfsbackup.pid"
+PID="/var/tmp/zfsbackup.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
 ZFS="/usr/sbin/zfs"
 
