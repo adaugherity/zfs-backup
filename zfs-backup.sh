@@ -230,7 +230,7 @@ if [ -e $LOCK ]; then
     else
 	# write something to the file so it will be caught by the above
 	# test and cron output (and thus, emails sent) won't happen again
-        echo "Maintenace mode, email has been sent once." > $LOCK
+        echo "Maintenance mode, email has been sent once." > $LOCK
         echo "Service is in maintenance state; please correct and then"
         echo "rm $LOCK before running again."
     fi
