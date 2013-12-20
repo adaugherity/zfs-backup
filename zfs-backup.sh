@@ -61,6 +61,7 @@
 DEBUG=""		# set to non-null to enable debug (dry-run)
 VERBOSE=""		# "-v" for verbose, null string for quiet
 LOCK="/var/tmp/zfsbackup.lock"
+PID="/var/run/zfsbackup.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
 ZFS="/usr/sbin/zfs"
 
@@ -237,6 +238,12 @@ if [ -e $LOCK ]; then
     exit 2
 fi
 
+if [ -e "$PID" ]; then
+    [ "$VERBOSE" ] && echo "Backup job already running!"
+    exit 0
+fi
+echo $$ > $PID
+
 FAIL=0
 # get the datasets that have our backup property set
 COUNT=$($ZFS get -s local -H -o name,value $PROP | wc -l)
@@ -277,4 +284,5 @@ if [ $FAIL -gt 0 ]; then
     fi
 fi
 
+rm $PID
 exit $FAIL
