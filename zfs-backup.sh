@@ -64,6 +64,8 @@ LOCK="/var/tmp/zfsbackup.lock"
 PID="/var/tmp/zfsbackup.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
 ZFS="/usr/sbin/zfs"
+# Replace with sudo(8) if pfexec(1) is not available on your OS
+PFEXEC=`which pfexec`
 
 # local settings -- datasets to back up are now found by property
 TAG="zfs-auto-snap_daily"
@@ -207,10 +209,10 @@ do_backup() {
     fi
 
     if [ $DEBUG ]; then
-	echo "would run: $ZFS send -R -I $snap1 $DATASET@$snap2 |"
+	echo "would run: $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 |"
 	echo "  ssh $REMUSER@$REMHOST $REMZFS recv $RECV_OPT -vF $REMPOOL"
     else
-	if ! pfexec $ZFS send -R -I $snap1 $DATASET@$snap2 | \
+	if ! $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 | \
 	  ssh $REMUSER@$REMHOST $REMZFS recv $VERBOSE $RECV_OPT -F $REMPOOL; then
 	    echo 1>&2 "Error sending snapshot."
 	    touch $LOCK
