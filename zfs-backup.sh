@@ -1,4 +1,4 @@
-#!/bin/ksh
+#!/usr/bin/env ksh
 # /usr/xpg4/bin/sh and /bin/bash also work; /bin/sh does not
 
 # backup script to replicate a ZFS filesystem and its children to another
