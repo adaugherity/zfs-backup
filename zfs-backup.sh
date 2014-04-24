@@ -210,7 +210,7 @@ do_backup() {
 
     if [ $DEBUG ]; then
 	echo "would run: $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 |"
-	echo "  ssh $REMUSER@$REMHOST $REMZFS recv $RECV_OPT -vF $REMPOOL"
+	echo "  ssh $REMUSER@$REMHOST $REMZFS recv $VERBOSE $RECV_OPT -F $REMPOOL"
     else
 	if ! $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 | \
 	  ssh $REMUSER@$REMHOST $REMZFS recv $VERBOSE $RECV_OPT -F $REMPOOL; then
