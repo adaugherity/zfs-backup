@@ -265,6 +265,7 @@ COUNT=$($ZFS get -s local -H -o name,value $PROP | wc -l)
 if [ $COUNT -lt 1 ]; then
     echo "No datasets configured for backup!  Please set the '$PROP' property"
     echo "appropriately on the datasets you wish to back up."
+    rm $PID
     exit 2
 fi
 $ZFS get -s local -H -o name,value $PROP |
