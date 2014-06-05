@@ -70,6 +70,7 @@ TAG="zfs-auto-snap_daily"
 PROP="edu.tamu:backuptarget"
 # remote settings (on destination host)
 REMUSER="zfsbak"
+# special case: when $REMHOST=localhost, ssh is bypassed
 REMHOST="backupserver.my.domain"
 REMPOOL="backuppool"
 REMZFS="/usr/sbin/zfs"
@@ -129,6 +130,12 @@ fi
 [ "$recent_flag" ] && RECENT=$recent_flag
 # set default value so integer tests work
 if [ -z "$RECENT" ]; then RECENT=0; fi
+# local (non-ssh) backup handling: REMHOST=localhost
+if [ "$REMHOST" = "localhost" ]; then
+    REMZFS_CMD="$ZFS"
+else
+    REMZFS_CMD="ssh $REMUSER@$REMHOST $REMZFS"
+fi
 
 # Usage: do_backup pool/fs/to/backup receive_option
 #   receive_option should be -d for full path and -e for base name
@@ -163,10 +170,18 @@ do_backup() {
     snap2=${newest_local#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "$msg $snap2"
 
-    # needs public key auth configured beforehand
-    newest_remote="$(ssh -n $REMUSER@$REMHOST $REMZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
+    if [ "$REMHOST" = "localhost" ]; then
+	newest_remote="$($ZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
+	err_msg="Error fetching snapshot listing for local target pool $REMPOOL."
+    else
+	# ssh needs public key auth configured beforehand
+	# Not using $REMZFS_CMD because we need 'ssh -n' here, but must not use
+	# 'ssh -n' for the actual zfs recv.
+	newest_remote="$(ssh -n $REMUSER@$REMHOST $REMZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
+	err_msg="Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST."
+    fi
     if [ -z $newest_remote ]; then
-	echo "Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST." >&2
+	echo "$err_msg" >&2
 	[ $DEBUG ] || touch $LOCK
 	return 1
     fi
@@ -208,10 +223,10 @@ do_backup() {
 
     if [ $DEBUG ]; then
 	echo "would run: $ZFS send -R -I $snap1 $DATASET@$snap2 |"
-	echo "  ssh $REMUSER@$REMHOST $REMZFS recv $RECV_OPT -vF $REMPOOL"
+	echo "  $REMZFS_CMD recv $RECV_OPT -vF $REMPOOL"
     else
 	if ! pfexec $ZFS send -R -I $snap1 $DATASET@$snap2 | \
-	  ssh $REMUSER@$REMHOST $REMZFS recv $VERBOSE $RECV_OPT -F $REMPOOL; then
+	  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL; then
 	    echo 1>&2 "Error sending snapshot."
 	    touch $LOCK
 	    return 1
