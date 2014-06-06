@@ -162,9 +162,18 @@ do_backup() {
 
     if [ $RECENT -gt 1 ]; then
 	newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | awk NR==$RECENT)"
+	if [ -z "$newest_local" ]; then
+	    echo "Error: could not find $(ord $RECENT) most recent snapshot matching tag" >&2
+	    echo "'$TAG' for ${DATASET}!" >&2
+	    return 1
+	fi
 	msg="using local snapshot ($(ord $RECENT) most recent):"
     else
 	newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
+	if [ -z "$newest_local" ]; then
+	    echo "Error: no snapshots matching tag '$TAG' for ${DATASET}!" >&2
+	    return 1
+	fi
 	msg="newest local snapshot:"
     fi
     snap2=${newest_local#*@}
