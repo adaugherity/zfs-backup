@@ -124,7 +124,9 @@ if [ $(basename $CFG) = "$CFG" ]; then
 fi
 # Read any settings from a config file, if present
 if [ -r $CFG ]; then
-    . $CFG
+    # Pass its name as a parameter so it can use $(dirname $1) to source other
+    # config files in the same directory.
+    . $CFG $CFG
 fi
 # Set options now, so cmdline opts override the cfg file
 [ "$dbg_flag" ] && DEBUG=1
