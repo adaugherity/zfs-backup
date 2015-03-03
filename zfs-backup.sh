@@ -156,6 +156,13 @@ do_backup() {
 		;;
 	-d)	TARGET="$REMPOOL/$FS"
 		;;
+	rootfs)	if [ "$DATASET" = "$(basename $DATASET)" ]; then
+		    TARGET="$REMPOOL"
+		    RECV_OPT="-d"
+		else
+		    BAD=1
+		fi
+		;;
 	*)	BAD=1
     esac
     if [ $# -ne 2 -o "$BAD" ]; then
@@ -289,13 +296,20 @@ do
     #   Given the hierarchy pool/a/b,
     #   * fullpath: replicate to backuppool/a/b
     #   * basename: replicate to backuppool/b
-	fullpath) [ $VERBOSE ] && echo "\n$dataset:"
+	fullpath) [ $VERBOSE ] && printf "\n$dataset:\n"
 	    do_backup $dataset -d
 		;;
-	basename) [ $VERBOSE ] && echo "\n$dataset:"
+	basename) [ $VERBOSE ] && printf "\n$dataset:\n"
 	    do_backup $dataset -e
 		;;
-	*)  echo "Warning: $dataset has invalid backuptarget property '$value', skipping." >&2
+	rootfs) [ $VERBOSE ] && printf "\n$dataset:\n"
+	    if [ "$dataset" = "$(basename $dataset)" ]; then
+		do_backup $dataset rootfs
+	    else
+		echo "Warning: $dataset has 'rootfs' backuptarget property but is a non-root filesystem -- skipping." >&2
+	    fi
+		;;
+	*)  echo "Warning: $dataset has invalid backuptarget property '$value' -- skipping." >&2
 		;;
     esac
     STATUS=$?
