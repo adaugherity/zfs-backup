@@ -1,16 +1,19 @@
 #!/usr/bin/env ksh
-# /usr/xpg4/bin/sh and /bin/bash also work; /bin/sh does not
+# Needs a POSIX-compatible sh, like ash (Debian & FreeBSD /bin/sh), ksh, or
+# bash.  On Solaris 10 you need to use /usr/xpg4/bin/sh (the POSIX shell) or
+# /bin/ksh -- its /bin/sh is an ancient Bourne shell, which does not work.
 
 # backup script to replicate a ZFS filesystem and its children to another
 # server via zfs snapshots and zfs send/receive
 #
 # SMF manifests welcome!
 #
+# v0.4 (unreleased) - misc. fixes; portability & doc improvements
 # v0.3 - cmdline options and cfg file support
 # v0.2 - multiple datasets
 # v0.1 - initial working version
 
-# Copyright (c) 2009-13 Andrew Daugherity <adaugherity@tamu.edu>
+# Copyright (c) 2009-15 Andrew Daugherity <adaugherity@tamu.edu>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -75,7 +78,7 @@ REMUSER="zfsbak"
 # special case: when $REMHOST=localhost, ssh is bypassed
 REMHOST="backupserver.my.domain"
 REMPOOL="backuppool"
-REMZFS="/usr/sbin/zfs"
+REMZFS="$ZFS"
 
 
 usage() {
