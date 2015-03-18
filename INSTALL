@@ -1,0 +1,28 @@
+FreeBSD:
+* shell: /bin/sh
+* PFEXEC=/usr/local/bin/sudo  (or use zfs allow)
+* ZFS=/sbin/zfs
+
+User creation:
+# pw groupadd zfsbak -g 126
+# pw useradd zfsbak -u 126 -g 126 -c "backup user" -d /var/zfsbak -s /bin/sh -m
+(uid 126 is unused in src/etc/master.passwd and ports/UIDs -- double-check your system!)
+
+
+Solaris 10:
+* shell: /usr/xpg4/bin/sh or /bin/ksh
+* PFEXEC=/usr/bin/pfexec (or use zfs allow)
+* ZFS=/sbin/zfs (also symlinked to /usr/sbin/zfs)
+
+
+Linux:
+* shell: /bin/sh (dash or bash)
+* PFEXEC=/usr/bin/sudo (no zfs allow support on Linux, but can set /dev/zfs permissions)
+* ZFS=/usr/sbin/zfs
+
+sudoers:
+zfsbak ALL=(ALL) NOPASSWD: /sbin/zfs send *
+
+User creation:
+# groupadd -r zfsbak
+# useradd -r -g zfsbak -c "ZFS backup user" -d /var/lib/zfsbak -s /bin/sh -m  zfsbak
