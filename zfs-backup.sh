@@ -1,4 +1,4 @@
-#!/usr/bin/env ksh
+#!/usr/bin/sh
 # Needs a POSIX-compatible sh, like ash (Debian & FreeBSD /bin/sh), ksh, or
 # bash.  On Solaris 10 you need to use /usr/xpg4/bin/sh (the POSIX shell) or
 # /bin/ksh -- its /bin/sh is an ancient Bourne shell, which does not work.
@@ -66,9 +66,9 @@ VERBOSE=""		# "-v" for verbose, null string for quiet
 LOCK="/var/tmp/zfsbackup.lock"
 PID="/var/tmp/zfsbackup.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
-ZFS="/usr/sbin/zfs"
+ZFS="/sbin/zfs"
 # Replace with sudo(8) if pfexec(1) is not available on your OS
-PFEXEC=`which pfexec`
+PFEXEC=$(which pfexec)
 
 # local settings -- datasets to back up are now found by property
 TAG="zfs-auto-snap_daily"
