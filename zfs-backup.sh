@@ -317,15 +317,15 @@ do
     esac
     STATUS=$?
     if [ $STATUS -gt 0 ]; then
-	FAIL=$(($FAIL | $STATUS))
+	FAIL=$((FAIL | STATUS))
     fi
 done
 
 if [ $FAIL -gt 0 ]; then
-    if [ $(($FAIL & 1)) -gt 0 ]; then
+    if [ $((FAIL & 1)) -gt 0 ]; then
 	echo "There were errors backing up some datasets." >&2
     fi
-    if [ $(($FAIL & 2)) -gt 0 ]; then
+    if [ $((FAIL & 2)) -gt 0 ]; then
 	echo "Some datasets had misconfigured $PROP properties." >&2
     fi
 fi
