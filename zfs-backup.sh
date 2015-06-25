@@ -61,8 +61,8 @@
 #   * if anything fails, set svc to maint. and exit
 
 # all of the following variables (except CFG) may be set in the config file
-DEBUG=""		# set to non-null to enable debug (dry-run)
-VERBOSE=""		# "-v" for verbose, null string for quiet
+DEBUG=""    # set to non-null to enable debug (dry-run)
+VERBOSE=""    # "-v" for verbose, null string for quiet
 LOCK="/var/tmp/zfsbackup.lock"
 PID="/var/tmp/zfsbackup.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
@@ -108,12 +108,12 @@ if [ $? -ne 0 ]; then
 fi
 for opt; do
     case $opt in
-	-h|-\?) usage;;
-	-n) dbg_flag=Y; shift;;
-	-v) verb_flag=Y; shift;;
-	-f) CFG=$2; shift 2;;
-	-r) recent_flag=$2; shift 2;;
-	--) shift; break;;
+        -h|-\?) usage;;
+        -n) dbg_flag=Y; shift;;
+        -v) verb_flag=Y; shift;;
+        -f) CFG=$2; shift 2;;
+        -r) recent_flag=$2; shift 2;;
+        --) shift; break;;
     esac
 done
 if [ $# -gt 1 ]; then
@@ -150,110 +150,110 @@ fi
 do_backup() {
 
     DATASET=$1
-    FS=${DATASET#*/}		# strip local pool name
-    FS_BASE=${DATASET##*/}	# only the last part
+    FS=${DATASET#*/}    # strip local pool name
+    FS_BASE=${DATASET##*/}  # only the last part
     RECV_OPT=$2
 
     case $RECV_OPT in
-	-e)	TARGET="$REMPOOL/$FS_BASE"
-		;;
-	-d)	TARGET="$REMPOOL/$FS"
-		;;
-	rootfs)	if [ "$DATASET" = "$(basename $DATASET)" ]; then
-		    TARGET="$REMPOOL"
-		    RECV_OPT="-d"
-		else
-		    BAD=1
-		fi
-		;;
-	*)	BAD=1
+        -e) TARGET="$REMPOOL/$FS_BASE"
+            ;;
+        -d) TARGET="$REMPOOL/$FS"
+            ;;
+        rootfs) if [ "$DATASET" = "$(basename $DATASET)" ]; then
+                    TARGET="$REMPOOL"
+                    RECV_OPT="-d"
+                else
+                    BAD=1
+                fi
+                ;;
+        *)  BAD=1
     esac
     if [ $# -ne 2 -o "$BAD" ]; then
-	echo "Oops! do_backup called improperly:" 1>&2
-	echo "    $*" 1>&2
-	return 2
+        echo "Oops! do_backup called improperly:" 1>&2
+        echo "    $*" 1>&2
+        return 2
     fi
 
     if [ $RECENT -gt 1 ]; then
-	newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | awk NR==$RECENT)"
-	if [ -z "$newest_local" ]; then
-	    echo "Error: could not find $(ord $RECENT) most recent snapshot matching tag" >&2
-	    echo "'$TAG' for ${DATASET}!" >&2
-	    return 1
-	fi
-	msg="using local snapshot ($(ord $RECENT) most recent):"
+        newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | awk NR==$RECENT)"
+        if [ -z "$newest_local" ]; then
+            echo "Error: could not find $(ord $RECENT) most recent snapshot matching tag" >&2
+            echo "'$TAG' for ${DATASET}!" >&2
+            return 1
+        fi
+        msg="using local snapshot ($(ord $RECENT) most recent):"
     else
-	newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
-	if [ -z "$newest_local" ]; then
-	    echo "Error: no snapshots matching tag '$TAG' for ${DATASET}!" >&2
-	    return 1
-	fi
-	msg="newest local snapshot:"
+        newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
+        if [ -z "$newest_local" ]; then
+            echo "Error: no snapshots matching tag '$TAG' for ${DATASET}!" >&2
+            return 1
+        fi
+        msg="newest local snapshot:"
     fi
     snap2=${newest_local#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "$msg $snap2"
 
     if [ "$REMHOST" = "localhost" ]; then
-	newest_remote="$($ZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
-	err_msg="Error fetching snapshot listing for local target pool $REMPOOL."
+        newest_remote="$($ZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
+        err_msg="Error fetching snapshot listing for local target pool $REMPOOL."
     else
-	# ssh needs public key auth configured beforehand
-	# Not using $REMZFS_CMD because we need 'ssh -n' here, but must not use
-	# 'ssh -n' for the actual zfs recv.
-	newest_remote="$(ssh -n $REMUSER@$REMHOST $REMZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
-	err_msg="Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST."
+        # ssh needs public key auth configured beforehand
+        # Not using $REMZFS_CMD because we need 'ssh -n' here, but must not use
+        # 'ssh -n' for the actual zfs recv.
+        newest_remote="$(ssh -n $REMUSER@$REMHOST $REMZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
+        err_msg="Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST."
     fi
     if [ -z $newest_remote ]; then
-	echo "$err_msg" >&2
-	[ $DEBUG ] || touch $LOCK
-	return 1
+        echo "$err_msg" >&2
+        [ $DEBUG ] || touch $LOCK
+        return 1
     fi
     snap1=${newest_remote#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "newest remote snapshot: $snap1"
 
     if ! $ZFS list -t snapshot -H $DATASET@$snap1 > /dev/null 2>&1; then
-	exec 1>&2
-	echo "Newest remote snapshot '$snap1' does not exist locally!"
-	echo "Perhaps it has been already rotated out."
-	echo ""
-	echo "Manually run zfs send/recv to bring $TARGET on $REMHOST"
-	echo "to a snapshot that exists on this host (newest local snapshot with the"
-	echo "tag $TAG is $snap2)."
-	[ $DEBUG ] || touch $LOCK
-	return 1
+        exec 1>&2
+        echo "Newest remote snapshot '$snap1' does not exist locally!"
+        echo "Perhaps it has been already rotated out."
+        echo ""
+        echo "Manually run zfs send/recv to bring $TARGET on $REMHOST"
+        echo "to a snapshot that exists on this host (newest local snapshot with the"
+        echo "tag $TAG is $snap2)."
+        [ $DEBUG ] || touch $LOCK
+        return 1
     fi
     if ! $ZFS list -t snapshot -H $DATASET@$snap2 > /dev/null 2>&1; then
-	exec 1>&2
-	echo "Something has gone horribly wrong -- local snapshot $snap2"
-	echo "has suddenly disappeared!"
-	[ $DEBUG ] || touch $LOCK
-	return 1
+        exec 1>&2
+        echo "Something has gone horribly wrong -- local snapshot $snap2"
+        echo "has suddenly disappeared!"
+        [ $DEBUG ] || touch $LOCK
+        return 1
     fi
 
     if [ "$snap1" = "$snap2" ]; then
-	[ $VERBOSE ] && echo "Remote snapshot is the same as local; not running."
-	return 0
+        [ $VERBOSE ] && echo "Remote snapshot is the same as local; not running."
+        return 0
     fi
 
     # sanity checking of snapshot times -- avoid going too far back with -r
     snap1time=$($ZFS get -Hp -o value creation $DATASET@$snap1)
     snap2time=$($ZFS get -Hp -o value creation $DATASET@$snap2)
     if [ $snap2time -lt $snap1time ]; then
-	echo "Error: target snapshot $snap2 is older than $snap1!"
-	echo "Did you go too far back with '-r'?"
-	return 1
+        echo "Error: target snapshot $snap2 is older than $snap1!"
+        echo "Did you go too far back with '-r'?"
+        return 1
     fi
 
     if [ $DEBUG ]; then
-	echo "would run: $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 |"
-	echo "  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL"
+        echo "would run: $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 |"
+        echo "  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL"
     else
-	if ! $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 | \
-	  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL; then
-	    echo 1>&2 "Error sending snapshot."
-	    touch $LOCK
-	    return 1
-	fi
+        if ! $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 | \
+                $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL; then
+            echo 1>&2 "Error sending snapshot."
+            touch $LOCK
+            return 1
+        fi
     fi
 }
 
@@ -261,14 +261,14 @@ do_backup() {
 if [ -e $LOCK ]; then
     # this would be nicer as SMF maintenance state
     if [ -s $LOCK  ]; then
-	# in normal mode, only send one email about the failure, not every run
-	if [ "$VERBOSE" ]; then
+        # in normal mode, only send one email about the failure, not every run
+        if [ "$VERBOSE" ]; then
             echo "Service is in maintenance state; please correct and then"
             echo "rm $LOCK before running again."
         fi
     else
-	# write something to the file so it will be caught by the above
-	# test and cron output (and thus, emails sent) won't happen again
+        # write something to the file so it will be caught by the above
+        # test and cron output (and thus, emails sent) won't happen again
         echo "Maintenance mode, email has been sent once." > $LOCK
         echo "Service is in maintenance state; please correct and then"
         echo "rm $LOCK before running again."
@@ -292,41 +292,41 @@ if [ $COUNT -lt 1 ]; then
     exit 2
 fi
 $ZFS get -s local -H -o name,value $PROP |
-while read dataset value
-do
-    case $value in
-    # property values:
-    #   Given the hierarchy pool/a/b,
-    #   * fullpath: replicate to backuppool/a/b
-    #   * basename: replicate to backuppool/b
-	fullpath) [ $VERBOSE ] && printf "\n$dataset:\n"
-	    do_backup $dataset -d
-		;;
-	basename) [ $VERBOSE ] && printf "\n$dataset:\n"
-	    do_backup $dataset -e
-		;;
-	rootfs) [ $VERBOSE ] && printf "\n$dataset:\n"
-	    if [ "$dataset" = "$(basename $dataset)" ]; then
-		do_backup $dataset rootfs
-	    else
-		echo "Warning: $dataset has 'rootfs' backuptarget property but is a non-root filesystem -- skipping." >&2
-	    fi
-		;;
-	*)  echo "Warning: $dataset has invalid backuptarget property '$value' -- skipping." >&2
-		;;
-    esac
-    STATUS=$?
-    if [ $STATUS -gt 0 ]; then
-	FAIL=$((FAIL | STATUS))
-    fi
-done
+    while read dataset value
+    do
+        case $value in
+            # property values:
+            #   Given the hierarchy pool/a/b,
+            #   * fullpath: replicate to backuppool/a/b
+            #   * basename: replicate to backuppool/b
+            fullpath) [ $VERBOSE ] && printf "\n$dataset:\n"
+                      do_backup $dataset -d
+                      ;;
+            basename) [ $VERBOSE ] && printf "\n$dataset:\n"
+                      do_backup $dataset -e
+                      ;;
+            rootfs) [ $VERBOSE ] && printf "\n$dataset:\n"
+                    if [ "$dataset" = "$(basename $dataset)" ]; then
+                        do_backup $dataset rootfs
+                    else
+                        echo "Warning: $dataset has 'rootfs' backuptarget property but is a non-root filesystem -- skipping." >&2
+                    fi
+                    ;;
+            *)  echo "Warning: $dataset has invalid backuptarget property '$value' -- skipping." >&2
+                ;;
+        esac
+        STATUS=$?
+        if [ $STATUS -gt 0 ]; then
+            FAIL=$((FAIL | STATUS))
+        fi
+    done
 
 if [ $FAIL -gt 0 ]; then
     if [ $((FAIL & 1)) -gt 0 ]; then
-	echo "There were errors backing up some datasets." >&2
+        echo "There were errors backing up some datasets." >&2
     fi
     if [ $((FAIL & 2)) -gt 0 ]; then
-	echo "Some datasets had misconfigured $PROP properties." >&2
+        echo "Some datasets had misconfigured $PROP properties." >&2
     fi
 fi
 
