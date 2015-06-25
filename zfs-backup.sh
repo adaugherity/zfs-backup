@@ -259,10 +259,10 @@ do_backup() {
 
     if [ $DEBUG ]; then
         echo "would run: $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 |"
-        echo "  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL"
+        echo "  $REMZFS_CMD recv $VERBOSE $RECV_OPT $REMPOOL"
     else
         if ! $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 | \
-                $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL; then
+                $REMZFS_CMD recv $VERBOSE $RECV_OPT $REMPOOL; then
             echo 1>&2 "Error sending snapshot."
             touch $LOCK
             return 1
