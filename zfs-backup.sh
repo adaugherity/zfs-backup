@@ -195,18 +195,31 @@ do_backup() {
 
     if [ "$REMHOST" = "localhost" ]; then
         newest_remote="$($ZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
-        err_msg="Error fetching snapshot listing for local target pool $REMPOOL."
     else
         # ssh needs public key auth configured beforehand
         # Not using $REMZFS_CMD because we need 'ssh -n' here, but must not use
         # 'ssh -n' for the actual zfs recv.
         newest_remote="$(ssh -n $REMUSER@$REMHOST $REMZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
-        err_msg="Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST."
     fi
     if [ -z $newest_remote ]; then
-        echo "$err_msg" >&2
-        [ $DEBUG ] || touch $LOCK
-        return 1
+        oldest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | tail -1 )"
+        if [ -z "oldest_local" ]; then
+            echo "Error: could not find oldest snapshot matching tag" >&2
+            echo "'$TAG' for ${DATASET}!" >&2
+            return 1
+        fi
+        if [ $DEBUG ]; then
+            echo "would run: $PFEXEC $ZFS send -R $oldest_local |"
+            echo "  $REMZFS_CMD recv $VERBOSE $RECV_OPT $REMPOOL"
+        else
+            if ! $PFEXEC $ZFS send -R $oldest_local | \
+                    $REMZFS_CMD recv $VERBOSE $RECV_OPT $REMPOOL; then
+                echo 1>&2 "Error sending initial snapshot."
+                touch $LOCK
+                return 1
+            fi
+        fi
+        newest_remote="$oldest_local"
     fi
     snap1=${newest_remote#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "newest remote snapshot: $snap1"
