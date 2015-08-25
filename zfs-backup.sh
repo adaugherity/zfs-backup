@@ -61,14 +61,16 @@
 #   * if anything fails, set svc to maint. and exit
 
 # all of the following variables (except CFG) may be set in the config file
-DEBUG=""    # set to non-null to enable debug (dry-run)
+DEBUG=""      # set to non-null to enable debug (dry-run)
 VERBOSE=""    # "-v" for verbose, null string for quiet
+LOCKING=YES   # YES or NO. Maybe we want to always run the backup
 LOCK="/var/tmp/zfsbackup.lock"
 PID="/var/tmp/zfsbackup.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
 ZFS="/sbin/zfs"
 # Replace with sudo(8) if pfexec(1) is not available on your OS
 PFEXEC=$(which pfexec)
+
 
 # local settings -- datasets to back up are now found by property
 TAG="zfs-auto-snap_daily"
@@ -215,7 +217,7 @@ do_backup() {
             if ! $PFEXEC $ZFS send -R $oldest_local | \
                     $REMZFS_CMD recv $VERBOSE $RECV_OPT $REMPOOL; then
                 echo 1>&2 "Error sending initial snapshot."
-                touch $LOCK
+                [ $LOCKING = 'YES' ] && touch $LOCK
                 return 1
             fi
         fi
@@ -232,14 +234,14 @@ do_backup() {
         echo "Manually run zfs send/recv to bring $TARGET on $REMHOST"
         echo "to a snapshot that exists on this host (newest local snapshot with the"
         echo "tag $TAG is $snap2)."
-        [ $DEBUG ] || touch $LOCK
+        [ $DEBUG ] || ([ $LOCKING = 'YES' ] && touch $LOCK)
         return 1
     fi
     if ! $ZFS list -t snapshot -H $DATASET@$snap2 > /dev/null 2>&1; then
         exec 1>&2
         echo "Something has gone horribly wrong -- local snapshot $snap2"
         echo "has suddenly disappeared!"
-        [ $DEBUG ] || touch $LOCK
+        [ $DEBUG ] || ([ $LOCKING = 'YES' ] && touch $LOCK)
         return 1
     fi
 
@@ -264,14 +266,14 @@ do_backup() {
         if ! $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 | \
                 $REMZFS_CMD recv $VERBOSE $RECV_OPT $REMPOOL; then
             echo 1>&2 "Error sending snapshot."
-            touch $LOCK
+            [ $LOCKING = 'YES' ] && touch $LOCK
             return 1
         fi
     fi
 }
 
 # begin main script
-if [ -e $LOCK ]; then
+if [ $LOCKING = 'YES' -a -e $LOCK ]; then
     # this would be nicer as SMF maintenance state
     if [ -s $LOCK  ]; then
         # in normal mode, only send one email about the failure, not every run
