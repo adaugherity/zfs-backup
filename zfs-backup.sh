@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/bin/sh
 # Needs a POSIX-compatible sh, like ash (Debian & FreeBSD /bin/sh), ksh, or
 # bash.  On Solaris 10 you need to use /usr/xpg4/bin/sh (the POSIX shell) or
 # /bin/ksh -- its /bin/sh is an ancient Bourne shell, which does not work.
@@ -68,9 +68,13 @@ LOCK="/var/tmp/zfsbackup.lock"
 PID="/var/tmp/zfsbackup.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
 ZFS="/sbin/zfs"
-# Replace with sudo(8) if pfexec(1) is not available on your OS
-PFEXEC=$(which pfexec)
 
+# checking user is root 
+if [ "$(id -u)" != "0" ]; then
+   PFEXEC="/usr/local/bin/sudo"
+else
+   PFEXEC=""
+fi
 
 # local settings -- datasets to back up are now found by property
 TAG="zfs-auto-snap_daily"
@@ -214,8 +218,9 @@ do_backup() {
             echo "would run: $PFEXEC $ZFS send -R $oldest_local |"
             echo "  $REMZFS_CMD recv $VERBOSE $RECV_OPT $REMPOOL"
         else
+			echo 1>&2 "Sending initial snapshot."
             if ! $PFEXEC $ZFS send -R $oldest_local | \
-                    $REMZFS_CMD recv $VERBOSE $RECV_OPT $REMPOOL; then
+                    $REMZFS_CMD recv -F $VERBOSE $RECV_OPT $REMPOOL; then
                 echo 1>&2 "Error sending initial snapshot."
                 [ $LOCKING = 'YES' ] && touch $LOCK
                 return 1
