@@ -174,6 +174,13 @@ do_backup() {
                 ;;
         *)  BAD=1
     esac
+    
+    #if source is a pool, omit -d/-e flag and force the receive
+    if [ "$DATASET" == "$FS" ]; then
+        REMPOOL="$TARGET"
+        RECV_OPT="-F"
+    fi
+    
     if [ $# -ne 2 -o "$BAD" ]; then
         echo "Oops! do_backup called improperly:" 1>&2
         echo "    $*" 1>&2
@@ -208,7 +215,7 @@ do_backup() {
         newest_remote="$(ssh -n $REMUSER@$REMHOST $REMZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
     fi
     if [ -z $newest_remote ]; then
-        oldest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | tail -1 )"
+        oldest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1 )"
         if [ -z "oldest_local" ]; then
             echo "Error: could not find oldest snapshot matching tag" >&2
             echo "'$TAG' for ${DATASET}!" >&2
