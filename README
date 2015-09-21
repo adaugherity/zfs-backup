@@ -9,11 +9,11 @@ necessarily require that package -- anything that regularly generates
 snapshots that follow a given pattern will suffice.
 
 Command-line options:
-  -n		debug/dry-run mode
-  -v		verbose mode
-  -f file	specify a configuration file
-  -r N		use the Nth most recent local snapshot rather than the newest
-  -h, -?	display help message
+  -n    debug/dry-run mode
+  -v    verbose mode
+  -f file specify a configuration file
+  -r N    use the Nth most recent local snapshot rather than the newest
+  -h, -?  display help message
 
 
 Basic installation: After following the prerequisites, run manually to verify
@@ -52,11 +52,8 @@ PREREQUISITES:
   This can be done on a top-level filesystem, and is inherited by default.
   Depending on your usage, you may need to also allow further permissions such
   as share, sharenfs, hold, etc.
-5. an initial (full) zfs send/receive done so that remhost has the fs we
-  are backing up, and the associated snapshots -- something like:
-  zfs send -R $POOL/$FS@zfs-auto-snap_daily-(latest) | ssh $REMUSER@$REMHOST zfs recv -dvF $REMPOOL
-  Note: 'zfs send -R' will send *all* snapshots associated with a dataset, so
-  if you wish to purge old snapshots, do that first.
+5. zfs-backup does an initial (full) zfs send/receive so that remhost has the fs we
+  are backing up using the oldest local snapshot. If you wish to purge old snapshots, do that first.
 6. zfs allow any additional permissions needed, to fix any errors produced in step 5
 7. configure the TAG/PROP/REMUSER/REMHOST/REMPOOL variables in this script or in a config file
 8. zfs set $PROP={ fullpath | basename | rootfs } pool/fs
