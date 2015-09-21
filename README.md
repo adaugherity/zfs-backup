@@ -13,6 +13,7 @@ It supplements zfs-auto-snapshot, but runs independently.  I prefer that snapsho
 |-h, -? | display help message |
 
 ###Basic installation 
+Download zfs-backup.sh and Makefile to a folder, then run `make` command.
 After following the prerequisites, run manually to verify operation, and then add a line like the following to zfssnap's crontab:
 
 `30 * * * * /path/to/zfs-backup.sh [ options ]`
@@ -40,7 +41,7 @@ This can be done on a top-level filesystem, and is inherited by default. Dependi
 8. For each FS or volume you wish to back up:
 ```zfs set $PROP={ fullpath | basename | rootfs } pool/fs```
 
-###Property Values
+###Property values
 Given the hierarchy pool/a/b,
 * with 'fullpath' `zfs recv -d)`, this is replicated to backupserver:backuppool/a/b
 * with 'basename' `(zfs recv -e)`, this is replicated to backupserver:backuppool/b. This is useful for replicating a sub-level FS into the top level of the backup pool. e.g. pool/backup/foo => backuppool/foo (instead of backuppool/backup/foo)
