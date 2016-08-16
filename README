@@ -59,11 +59,12 @@ PREREQUISITES:
   if you wish to purge old snapshots, do that first.
 6. zfs allow any additional permissions needed, to fix any errors produced in step 5
 7. configure the TAG/PROP/REMUSER/REMHOST/REMPOOL variables in this script or in a config file
-8. zfs set $PROP={ fullpath | basename | rootfs } pool/fs
+8. zfs set $PROP={ poolpath | fullpath | basename | rootfs } pool/fs
   for each FS or volume you wish to back up.
 
 PROPERTY VALUES:
 Given the hierarchy pool/a/b,
+* with 'poolpath' (zfs recv -d), this is replicated to backupserver:backuppool/pool/a/b
 * with 'fullpath' (zfs recv -d), this is replicated to backupserver:backuppool/a/b
 * with 'basename' (zfs recv -e), this is replicated to backupserver:backuppool/b
   This is useful for replicating a sub-level FS into the top level of the backup pool;
