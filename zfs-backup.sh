@@ -159,6 +159,9 @@ do_backup() {
 		;;
 	-d)	TARGET="$REMPOOL/$FS"
 		;;
+	-p)	TARGET="$REMPOOL/$DATASET"
+		RECV_OPT="-d"
+		;;
 	rootfs)	if [ "$DATASET" = "$(basename $DATASET)" ]; then
 		    TARGET="$REMPOOL"
 		    RECV_OPT="-d"
@@ -297,8 +300,12 @@ do
     case $value in
     # property values:
     #   Given the hierarchy pool/a/b,
+    #   * poolpath: replicate to backuppool/pool/a/b
     #   * fullpath: replicate to backuppool/a/b
     #   * basename: replicate to backuppool/b
+	poolpath) [ $VERBOSE ] && printf "\n$dataset:\n"
+	    do_backup $dataset -p
+		;;
 	fullpath) [ $VERBOSE ] && printf "\n$dataset:\n"
 	    do_backup $dataset -d
 		;;
