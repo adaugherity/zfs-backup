@@ -1,4 +1,4 @@
-#!/usr/bin/env ksh
+#!/usr/bin/env sh
 # Needs a POSIX-compatible sh, like ash (Debian & FreeBSD /bin/sh), ksh, or
 # bash.  On Solaris 10 you need to use /usr/xpg4/bin/sh (the POSIX shell) or
 # /bin/ksh -- its /bin/sh is an ancient Bourne shell, which does not work.
@@ -66,9 +66,8 @@ VERBOSE=""		# "-v" for verbose, null string for quiet
 LOCK="/var/tmp/zfsbackup.lock"
 PID="/var/tmp/zfsbackup.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
-ZFS="/usr/sbin/zfs"
-# Replace with sudo(8) if pfexec(1) is not available on your OS
-PFEXEC=`which pfexec`
+ZFS="$(which zfs)"
+PFEXEC=`which pfexec || which sudo`
 
 # local settings -- datasets to back up are now found by property
 TAG="zfs-auto-snap_daily"
@@ -193,16 +192,9 @@ do_backup() {
     snap2=${newest_local#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "$msg $snap2"
 
-    if [ "$REMHOST" = "localhost" ]; then
-	newest_remote="$($ZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
-	err_msg="Error fetching snapshot listing for local target pool $REMPOOL."
-    else
-	# ssh needs public key auth configured beforehand
-	# Not using $REMZFS_CMD because we need 'ssh -n' here, but must not use
-	# 'ssh -n' for the actual zfs recv.
-	newest_remote="$(ssh -n $REMUSER@$REMHOST $REMZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
-	err_msg="Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST."
-    fi
+    all_remotes=$($REMZFS_CMD list -t snapshot -H -S creation -o name -d 1 $TARGET < /dev/null)
+    newest_remote="$(echo "$all_remotes" | grep $TAG | head -1)"
+    err_msg="Error fetching remote snapshot listing to $REMHOST."
     if [ -z $newest_remote ]; then
 	echo "$err_msg" >&2
 	[ $DEBUG ] || touch $LOCK
