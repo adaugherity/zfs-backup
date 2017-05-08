@@ -1,4 +1,4 @@
-#!/usr/bin/env ksh
+#!/usr/bin/env sh
 # Needs a POSIX-compatible sh, like ash (Debian & FreeBSD /bin/sh), ksh, or
 # bash.  On Solaris 10 you need to use /usr/xpg4/bin/sh (the POSIX shell) or
 # /bin/ksh -- its /bin/sh is an ancient Bourne shell, which does not work.
@@ -45,8 +45,12 @@
 # Consult the README file for details.
 
 # If this backup is not run for a long enough period that the newest
-# remote snapshot has been removed locally, manually run an incremental
-# zfs send/recv to bring it up to date, a la
+# remote snapshot has been removed locally, you can choose to
+# automatically allow older remote snapshots to be matched against
+# the local ones by setting a MAXAGE value other than 1. Be aware that
+# this will destroy the snapshots newer than the matched one on the
+# remote, before replacing them with newer ones. You might prefer a
+# manual zfs send/recv to bring it up to date, a la
 #   zfs send -I zfs-auto-snap_daily-(latest on remote) -R \
 #	$POOL/$FS@zfs-auto-snap_daily-(latest local) | \
 #       ssh $REMUSER@REMHOST zfs recv -dvF $REMPOOL
@@ -57,7 +61,8 @@
 #   * find newest local hourly snapshot
 #   * find newest remote hourly snapshot (via ssh)
 #   * check that both $newest_local and $latest_remote snaps exist locally
-#   * zfs send incremental (-I) from $newest_remote to $latest_local to dsthost
+#   * if $latest_remote does not exist locally, try up to $MAXAGE-1 older remotes
+#   * zfs send incremental (-I) from matching remote to newest local to dsthost
 #   * if anything fails, set svc to maint. and exit
 
 # all of the following variables (except CFG) may be set in the config file
@@ -66,9 +71,8 @@ VERBOSE=""		# "-v" for verbose, null string for quiet
 LOCK="/var/tmp/zfsbackup.lock"
 PID="/var/tmp/zfsbackup.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
-ZFS="/usr/sbin/zfs"
-# Replace with sudo(8) if pfexec(1) is not available on your OS
-PFEXEC=`which pfexec`
+ZFS="$(which zfs)"
+PFEXEC=`which pfexec || which sudo`
 
 # local settings -- datasets to back up are now found by property
 TAG="zfs-auto-snap_daily"
@@ -79,6 +83,7 @@ REMUSER="zfsbak"
 REMHOST="backupserver.my.domain"
 REMPOOL="backuppool"
 REMZFS="$ZFS"
+MAXAGE=1
 
 
 usage() {
@@ -137,6 +142,7 @@ fi
 [ "$recent_flag" ] && RECENT=$recent_flag
 # set default value so integer tests work
 if [ -z "$RECENT" ]; then RECENT=0; fi
+if [ $RECENT -lt 1 ]; then RECENT=1; fi
 # local (non-ssh) backup handling: REMHOST=localhost
 if [ "$REMHOST" = "localhost" ]; then
     REMZFS_CMD="$ZFS"
@@ -174,60 +180,43 @@ do_backup() {
 	return 2
     fi
 
-    if [ $RECENT -gt 1 ]; then
-	newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | awk NR==$RECENT)"
-	if [ -z "$newest_local" ]; then
-	    echo "Error: could not find $(ord $RECENT) most recent snapshot matching tag" >&2
-	    echo "'$TAG' for ${DATASET}!" >&2
-	    return 1
-	fi
-	msg="using local snapshot ($(ord $RECENT) most recent):"
-    else
-	newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
-	if [ -z "$newest_local" ]; then
-	    echo "Error: no snapshots matching tag '$TAG' for ${DATASET}!" >&2
-	    return 1
-	fi
-	msg="newest local snapshot:"
+    all_locals=$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET)
+    all_remotes=$($REMZFS_CMD list -t snapshot -H -S creation -o name -d 1 $TARGET < /dev/null)
+    err_msg="Error fetching remote snapshot listing to $REMHOST."
+    if [ -z "$all_remotes" ]; then
+        echo "$err_msg" >&2
+        [ $DEBUG ] || touch $LOCK
+        return 1
     fi
+
+    newest_local=$(echo "$all_locals" | grep $TAG | head -n $RECENT | tail -n1)
+    if [ -z "$newest_local" ]; then
+        echo "Error: no snapshots matching tag '$TAG' for ${DATASET}!" >&2
+        return 1
+    fi
+    msg="using local snapshot ($(ord $RECENT) most recent):"
     snap2=${newest_local#*@}
     [ "$DEBUG" -o "$VERBOSE" ] && echo "$msg $snap2"
 
-    if [ "$REMHOST" = "localhost" ]; then
-	newest_remote="$($ZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
-	err_msg="Error fetching snapshot listing for local target pool $REMPOOL."
-    else
-	# ssh needs public key auth configured beforehand
-	# Not using $REMZFS_CMD because we need 'ssh -n' here, but must not use
-	# 'ssh -n' for the actual zfs recv.
-	newest_remote="$(ssh -n $REMUSER@$REMHOST $REMZFS list -t snapshot -H -S creation -o name -d 1 $TARGET | grep $TAG | head -1)"
-	err_msg="Error fetching remote snapshot listing via ssh to $REMUSER@$REMHOST."
-    fi
-    if [ -z $newest_remote ]; then
-	echo "$err_msg" >&2
-	[ $DEBUG ] || touch $LOCK
-	return 1
-    fi
-    snap1=${newest_remote#*@}
-    [ "$DEBUG" -o "$VERBOSE" ] && echo "newest remote snapshot: $snap1"
-
-    if ! $ZFS list -t snapshot -H $DATASET@$snap1 > /dev/null 2>&1; then
-	exec 1>&2
-	echo "Newest remote snapshot '$snap1' does not exist locally!"
-	echo "Perhaps it has been already rotated out."
-	echo ""
-	echo "Manually run zfs send/recv to bring $TARGET on $REMHOST"
-	echo "to a snapshot that exists on this host (newest local snapshot with the"
-	echo "tag $TAG is $snap2)."
-	[ $DEBUG ] || touch $LOCK
-	return 1
-    fi
-    if ! $ZFS list -t snapshot -H $DATASET@$snap2 > /dev/null 2>&1; then
-	exec 1>&2
-	echo "Something has gone horribly wrong -- local snapshot $snap2"
-	echo "has suddenly disappeared!"
-	[ $DEBUG ] || touch $LOCK
-	return 1
+    snap1=""
+    tried_snapshots=0
+    for remote in $all_remotes; do
+        snap1_candidate=${remote#*@}
+        if (echo "$all_locals" | grep -q $snap1_candidate); then
+            snap1=$snap1_candidate
+            break
+        else
+            [ "$DEBUG" -o "$VERBOSE" ] && echo "Remote snapshot not found locally: \"$remote\" (probably already rotated out); skipping."
+        fi
+	tried_snapshots=$((tried_snapshots+1))
+	[ $MAXAGE -gt 0 -a $tried_snapshots -ge $MAXAGE ] && break
+    done
+    if [ -z "$snap1" ]; then
+        echo "Error: no matching snapshot between remote and local found in the last $MAXAGE snapshots." >&2
+        echo "This means that too many snapshot have been rotated out in the local, and manual intervention is required." >&2
+        echo "Entering manteinance mode." >&2
+        touch $LOCK
+        exit 4
     fi
 
     if [ "$snap1" = "$snap2" ]; then
@@ -248,12 +237,23 @@ do_backup() {
 	echo "would run: $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 |"
 	echo "  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL"
     else
+	RELEASE_CMD="$ZFS release $TAG $DATASET@$snap2"
+	trap "$RELEASE_CMD" EXIT
+	if ! $ZFS hold $TAG $DATASET@$snap2; then
+	    echo "Error: \"$snap1\" was rotated out while this program was running." >&2
+	    echo "You should wait for the rotation script to be finished," >&2
+	    echo "before running this script. Entering mantainance mode." >&2
+	    touch $LOCK
+	    exit 8
+	fi
 	if ! $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 | \
 	  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL; then
 	    echo 1>&2 "Error sending snapshot."
 	    touch $LOCK
 	    return 1
 	fi
+	$RELEASE_CMD
+	trap - EXIT
     fi
 }
 

@@ -29,8 +29,8 @@ This aims to be much more robust than the backup functionality of
 zfs-auto-snapshot, namely:
 * it uses 'zfs send -I' to send all intermediate snapshots (including
   any daily/weekly/etc.), and should still work even if it isn't run
-  every hour -- as long as the newest remote snapshot hasn't been
-  rotated out locally yet
+  every hour -- as long as there is at least one remote snapshot that has
+  not been rotated out locally yet
 * 'zfs recv -dF' on the destination host removes any snapshots not
   present locally so you don't have to worry about manually removing
   old snapshots there.
@@ -80,8 +80,10 @@ Given the hierarchy pool/a/b,
   into top-level child filesystems, and not touch any unknown filesystems.
 
 If this backup is not run for a long enough period that the newest
-remote snapshot has been removed locally, manually run an incremental
-zfs send/recv to bring it up to date, a la
+remote snapshot has been removed locally, then MAXAGE-1 older snapshots
+are tried instead, until a matching snapshot is found. You can choose
+to disable this behaviour using MAXAGE=1 and intervene manually instead,
+using a zfs send/recv to bring it up to date, a la
   zfs send -I zfs-auto-snap_daily-(latest on remote) -R $POOL/$FS@zfs-auto-snap_daily-(latest local) |
       ssh $REMUSER@REMHOST zfs recv -dvF $REMPOOL
 It's probably best to do a dry-run first (zfs recv -ndvF).
@@ -99,8 +101,9 @@ of your sync.  This is a good use case for an alternate configuration file.
 
 
 PROCEDURE:
-  * find newest local hourly snapshot
-  * find newest remote hourly snapshot (via ssh)
-  * check that both $newest_local and $latest_remote snaps exist locally
-  * zfs send incremental (-I) from $newest_remote to $latest_local to dsthost
-  * if anything fails, set svc to maint. and exit
+* find newest local hourly snapshot
+* find newest remote hourly snapshot (via ssh)
+* check that both $newest_local and $latest_remote snaps exist locally
+* if $latest_remote does not exist locally, try up to $MAXAGE-1 older remotes
+* zfs send incremental (-I) from matching remote to newest local to dsthost
+* if anything fails, set svc to maint. and exit
