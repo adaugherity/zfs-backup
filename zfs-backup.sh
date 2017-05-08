@@ -237,14 +237,14 @@ do_backup() {
 	echo "would run: $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 |"
 	echo "  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL"
     else
+	RELEASE_CMD="$ZFS release $TAG $DATASET@$snap2"
+	trap "$RELEASE_CMD" EXIT
 	if ! $ZFS hold $TAG $DATASET@$snap2; then
 	    echo "Error: \"$snap1\" was rotated out while this program was running." >&2
 	    echo "You should wait for the rotation script to be finished," >&2
 	    echo "before running this script. Entering mantainance mode." >&2
 	    touch $LOCK
 	    exit 8
-	else
-	    trap "$ZFS release $TAG $DATASET@$snap2" EXIT
 	fi
 	if ! $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 | \
 	  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL; then
@@ -252,6 +252,8 @@ do_backup() {
 	    touch $LOCK
 	    return 1
 	fi
+	$RELEASE_CMD
+	trap - EXIT
     fi
 }
 
