@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/bin/sh
 # Needs a POSIX-compatible sh, like ash (Debian & FreeBSD /bin/sh), ksh, or
 # bash.  On Solaris 10 you need to use /usr/xpg4/bin/sh (the POSIX shell) or
 # /bin/ksh -- its /bin/sh is an ancient Bourne shell, which does not work.
@@ -13,7 +13,7 @@
 # v0.2 - multiple datasets
 # v0.1 - initial working version
 
-# Copyright (c) 2009-15 Andrew Daugherity <adaugherity@tamu.edu>
+# Copyright (c) 2009-19 Andrew Daugherity <adaugherity@tamu.edu>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
