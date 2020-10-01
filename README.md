@@ -11,11 +11,13 @@ not necessarily require that package -- anything that regularly generates
 snapshots that follow a given pattern will suffice.
 
 ## Command-line options:
-  -n		| debug/dry-run mode
-  -v		| verbose mode
-  -f _file_	| specify a configuration file
-  -r _N_	| use the Nth most recent local snapshot rather than the newest
-  -h, -?	| display help message
+| Option    | Description    |
+| --- | :--- |
+|  -n		| debug/dry-run mode |
+|  -v		| verbose mode |
+|  -f _file_	| specify a configuration file |
+|  -r _N_	| use the Nth most recent local snapshot rather than the newest |
+|  -h, -?	| display help message |
 
 
 ## Basic installation:
@@ -42,23 +44,38 @@ zfs-auto-snapshot, namely:
 
 ## Prerequisites:
 1. zfs-auto-snapshot or equivalent package installed locally and regular
-  snapshots enabled (e.g. hourly, daily, etc.)
+  snapshots enabled (e.g. hourly, daily, etc.), preferably under a limited user
+  account
+
 2. home directory set for zfssnap role (the user taking snapshots and doing
   the sending):
-  `# rolemod -d /path/to/home zfssnap`
+  ```
+  # rolemod -d /path/to/home zfssnap
+  ```
+  (Solaris doesn't give roles a home directory by default.  Substitute an appropriate
+  command for other OSes, e.g. `pw usermod` on FreeBSD.)
+  
 3. ssh keys set up between `zfssnap@localhost` and `remuser@remhost`:
-  `# su - zfssnap`
-  `$ ssh-keygen`
+  ```
+  # su - zfssnap
+  $ ssh-keygen
+  ```
   Copy the contents of `.ssh/id_rsa.pub` into `~remuser/.ssh/authorized_keys` on
   remhost.  Test that key-based ssh works:
-  `$ ssh remuser@remhost`
+  ```
+  $ ssh remuser@remhost
+  ```
+
 4. `zfs allow` done for remuser on remhost:
   ```
   # zfs allow remuser atime,create,destroy,mount,mountpoint,receive,rollback,snapshot,userprop backuppool/fs
   ```
   This can be done on a top-level filesystem, and is inherited by default.
   Depending on your usage, you may need to also allow further permissions such
-  as share, sharenfs, hold, etc.
+  as share, sharenfs, hold, etc.  You may later revoke some of these, as receiving
+  incremental snapshots doesn't require as many permissions as the initial full
+  send (`create,destroy,mount,receive` is probably sufficient).
+
 5. an initial (full) zfs send/receive done so that remhost has the fs we
   are backing up, and the associated snapshots -- something like:
   ```
@@ -66,8 +83,11 @@ zfs-auto-snapshot, namely:
   ```
   Note: `zfs send -R` will send *all* snapshots associated with a dataset, so
   if you wish to purge old snapshots, do that first.
+
 6. `zfs allow` any additional permissions needed, to fix any errors produced in step 5
+
 7. configure the TAG/PROP/REMUSER/REMHOST/REMPOOL variables in this script or in a config file
+
 8. `zfs set $PROP={ fullpath | basename | rootfs } pool/fs`
   for each FS or volume you wish to back up.
 
