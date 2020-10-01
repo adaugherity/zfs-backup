@@ -13,7 +13,7 @@
 # v0.2 - multiple datasets
 # v0.1 - initial working version
 
-# Copyright (c) 2009-19 Andrew Daugherity <adaugherity@tamu.edu>
+# Copyright (c) 2009-20 Andrew Daugherity <adaugherity@tamu.edu>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without

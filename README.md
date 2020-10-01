@@ -10,17 +10,18 @@ prefer that snapshots continue to be taken even if the backup fails.  It does
 not necessarily require that package -- anything that regularly generates
 snapshots that follow a given pattern will suffice.
 
-## Command-line options:
-| Option    | Description    |
-| --- | :--- |
-|  -n		| debug/dry-run mode |
-|  -v		| verbose mode |
-|  -f _file_	| specify a configuration file |
+
+## Command-line options
+| Option	| Description			|
+| ---		| :---				|
+|  -n		| debug/dry-run mode		|
+|  -v		| verbose mode			|
+|  -f _file_	| specify a configuration file	|
 |  -r _N_	| use the Nth most recent local snapshot rather than the newest |
-|  -h, -?	| display help message |
+|  -h, -?	| display help message		|
 
 
-## Basic installation:
+## Basic installation
 After following the prerequisites, run manually to verify
 operation, and then add a line like the following to zfssnap's crontab:
 ```
@@ -42,7 +43,8 @@ zfs-auto-snapshot, namely:
   present locally so you don't have to worry about manually removing
   old snapshots there.
 
-## Prerequisites:
+
+## Prerequisites
 1. zfs-auto-snapshot or equivalent package installed locally and regular
   snapshots enabled (e.g. hourly, daily, etc.), preferably under a limited user
   account
@@ -90,7 +92,20 @@ zfs-auto-snapshot, namely:
 8. `zfs set $PROP={ fullpath | basename | rootfs } pool/fs`
   for each FS or volume you wish to back up.
 
-## Property Values:
+
+## Received properties and sharing
+Filesystem properties are included in the stream sent to the remote host.  If
+you have set `sharenfs` on a filesystem, the remote host will attempt to share
+it using these same settings; this may fail if the sender and receiver are
+different OSes, and will continue reporting a "cannot share" error every time,
+even if the incremental stream does not contain any `sharenfs` settings.
+
+To resolve this, after the initial full send/receive, set `sharenfs=off` on the
+_target_ filesystem.  As long as the property is not modified again on the
+sender, this will remain undisturbed.
+
+
+## Property values
 Given the hierarchy `pool/a/b`,
 * with **fullpath** (`zfs recv -d`), this is replicated to `backupserver:backuppool/a/b`
 * with **basename** (`zfs recv -e`), this is replicated to `backupserver:backuppool/b`
