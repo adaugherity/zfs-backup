@@ -49,27 +49,26 @@ zfs-auto-snapshot, namely:
 
 2. home directory set for zfssnap role (the user taking snapshots and doing
   the sending):
-  ```
-  # rolemod -d /path/to/home zfssnap
-  ```
+
+       # rolemod -d /path/to/home zfssnap
+
   (Solaris doesn't give roles a home directory by default.  Substitute an appropriate
   command for other OSes, e.g. `pw usermod` on FreeBSD.)
   
 3. ssh keys set up between `zfssnap@localhost` and `remuser@remhost`:
-  ```
-  # su - zfssnap
-  $ ssh-keygen
-  ```
+
+       # su - zfssnap
+       $ ssh-keygen
+
   Copy the contents of `.ssh/id_rsa.pub` into `~remuser/.ssh/authorized_keys` on
   remhost.  Test that key-based ssh works:
-  ```
-  $ ssh remuser@remhost
-  ```
+
+       $ ssh remuser@remhost
 
 4. `zfs allow` done for remuser on remhost:
-  ```
-  # zfs allow remuser atime,create,destroy,mount,mountpoint,receive,rollback,snapshot,userprop backuppool/fs
-  ```
+
+       # zfs allow remuser atime,create,destroy,mount,mountpoint,receive,rollback,snapshot,userprop backuppool/fs
+
   This can be done on a top-level filesystem, and is inherited by default.
   Depending on your usage, you may need to also allow further permissions such
   as share, sharenfs, hold, etc.  You may later revoke some of these, as receiving
@@ -78,9 +77,9 @@ zfs-auto-snapshot, namely:
 
 5. an initial (full) zfs send/receive done so that remhost has the fs we
   are backing up, and the associated snapshots -- something like:
-  ```
-  zfs send -R $POOL/$FS@zfs-auto-snap_daily-(latest) | ssh $REMUSER@$REMHOST zfs recv -dvF $REMPOOL
-  ```
+
+       zfs send -R $POOL/$FS@zfs-auto-snap_daily-(latest) | ssh $REMUSER@$REMHOST zfs recv -dvF $REMPOOL
+
   Note: `zfs send -R` will send *all* snapshots associated with a dataset, so
   if you wish to purge old snapshots, do that first.
 
