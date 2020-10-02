@@ -244,6 +244,15 @@ do_backup() {
 	return 1
     fi
 
+    # Don't mount the target file system after receiving the stream associated
+    # with it if the 'canmount' property is not set to 'on'
+    if [ "$REMHOST" = "localhost" ]; then
+      canmount_target="$($ZFS get -H -o value canmount $TARGET)"
+    else
+      canmount_target="$(ssh -n $REMUSER@$REMHOST $REMZFS get -H -o value canmount $TARGET)"
+    fi
+    if [ "$canmount_target" != "on" ]; then RECV_OPT="$RECV_OPT -u"; fi
+
     if [ $DEBUG ]; then
 	echo "would run: $PFEXEC $ZFS send -R -I $snap1 $DATASET@$snap2 |"
 	echo "  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL"
