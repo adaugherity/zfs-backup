@@ -98,30 +98,6 @@ zfs-auto-snapshot, namely:
   on each filesystem or volume you wish to back up.  All children of `pool/fs`
   are included in the backup.
 
-## Received properties and sharing
-Filesystem properties are included in the stream sent to the remote host.  If
-you have set `sharenfs` on a filesystem, the remote host will attempt to share
-it using these same settings; this may fail if the sender and receiver are
-different OSes, and will continue reporting a "cannot share" error every time,
-even if the incremental stream does not contain any `sharenfs` settings.
-
-To resolve this, after the initial full send/receive, set `sharenfs=off` on the
-_target_ filesystem.  As long as the property is not modified again on the
-sender, this will remain undisturbed.
-
-
-## "Cannot unmount" a deleted filesystem
-If you delete a filesystem on the source side, replicating this deletion to the
-target may fail with a "cannot unmount" error, e.g.:
-
-    cannot unmount '/export/backup/mongo': Operation not permitted
-    Error sending snapshot.
-
-This occurs on OSes where the kernel restricts mount operations, such that
-granting the **mount** right with `zfs allow` is insufficient.  A simple
-workaround is to run `zfs unmount `_`filesystem`_ on the target and then run
-`zfs-backup.sh` again.
-
 
 ## Property values
 Given the hierarchy `pool/a/b`,
@@ -140,6 +116,8 @@ Given the hierarchy `pool/a/b`,
   into a child filesystem of the same name, otherwise replicate all children
   into top-level child filesystems, and not touch any unknown filesystems.
 
+## Common issues and solutions
+### Catching up
 If this backup is not run for a long enough period that the newest
 remote snapshot has been removed locally, manually run an incremental
 `zfs send/recv` to bring it up to date, a la
@@ -161,7 +139,33 @@ avoid short-lived snapshots (e.g. hourly) being rotated out in the middle
 of your sync.  This is a good use case for an alternate configuration file.
 
 
-## Procedure:
+### Received properties and sharing
+Filesystem properties are included in the stream sent to the remote host.  If
+you have set `sharenfs` on a filesystem, the remote host will attempt to share
+it using these same settings; this may fail if the sender and receiver are
+different OSes, and will continue reporting a "cannot share" error every time,
+even if the incremental stream does not contain any `sharenfs` settings.
+
+To resolve this, after the initial full send/receive, set `sharenfs=off` on the
+_target_ filesystem.  As long as the property is not modified again on the
+sender, this will remain undisturbed.
+
+
+### Cannot unmount a deleted filesystem
+If you delete a filesystem on the source side, replicating this deletion to the
+target may fail with a "cannot unmount" error, e.g.:
+
+    cannot unmount '/export/backup/mongo': Operation not permitted
+    Error sending snapshot.
+
+This occurs on OSes where the kernel restricts mount operations, such that
+granting the **mount** right with `zfs allow` is insufficient.  A simple
+workaround is to run `zfs unmount `_`filesystem`_ on the target and then run
+`zfs-backup.sh` again.
+
+
+## Procedure
+The basic logic of this script is:
   * find newest local hourly snapshot
   * find newest remote hourly snapshot (via ssh)
   * check that both `$newest_local` and `$latest_remote` snaps exist locally
