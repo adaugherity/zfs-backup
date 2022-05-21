@@ -168,6 +168,6 @@ workaround is to run `zfs unmount `_`filesystem`_ on the target and then run
 The basic logic of this script is:
   * find newest local hourly snapshot
   * find newest remote hourly snapshot (via ssh)
-  * check that both `$newest_local` and `$latest_remote` snaps exist locally
-  * zfs send incremental (`-I`) from `$newest_remote` to `$latest_local` to dsthost
+  * check that both `$newest_local` and `$newest_remote` snaps exist locally
+  * zfs send incremental (`-I`) from `$newest_remote` to `$newest_local` to dsthost
   * if anything fails, set svc to maint. and exit

@@ -13,7 +13,7 @@
 # v0.2 - multiple datasets
 # v0.1 - initial working version
 
-# Copyright (c) 2009-20 Andrew Daugherity <adaugherity@tamu.edu>
+# Copyright (c) 2009-22 Andrew Daugherity <adaugherity@tamu.edu>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -56,8 +56,8 @@
 # PROCEDURE:
 #   * find newest local hourly snapshot
 #   * find newest remote hourly snapshot (via ssh)
-#   * check that both $newest_local and $latest_remote snaps exist locally
-#   * zfs send incremental (-I) from $newest_remote to $latest_local to dsthost
+#   * check that both $newest_local and $newest_remote snaps exist locally
+#   * zfs send incremental (-I) from $newest_remote to $newest_local to dsthost
 #   * if anything fails, set svc to maint. and exit
 
 # all of the following variables (except CFG) may be set in the config file
