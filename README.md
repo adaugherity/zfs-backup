@@ -87,11 +87,16 @@ zfs-auto-snapshot, namely:
 
 6. `zfs allow` any additional permissions needed, to fix any errors produced in step 5
 
-7. configure the TAG/PROP/REMUSER/REMHOST/REMPOOL variables in this script or in a config file
+7. configure the TAG/PROP/REMUSER/REMHOST/REMPOOL variables in this script or
+  in a config file
+  - TAG should match all snapshots of a given type when used with
+    `zfs list -t snap | grep $TAG`
+  - PROP is the name of the [ZFS user property](https://openzfs.github.io/openzfs-docs/man/7/zfsprops.7.html#User_Properties)
+    describing the backup, if you wish to change it from the default `edu.tamu:backuptarget`.
 
 8. `zfs set $PROP={ fullpath | basename | rootfs } pool/fs`
-  for each FS or volume you wish to back up.
-
+  on each filesystem or volume you wish to back up.  All children of `pool/fs`
+  are included in the backup.
 
 ## Received properties and sharing
 Filesystem properties are included in the stream sent to the remote host.  If
