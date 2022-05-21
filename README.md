@@ -105,6 +105,19 @@ _target_ filesystem.  As long as the property is not modified again on the
 sender, this will remain undisturbed.
 
 
+## "Cannot unmount" a deleted filesystem
+If you delete a filesystem on the source side, replicating this deletion to the
+target may fail with a "cannot unmount" error, e.g.:
+
+    cannot unmount '/export/backup/mongo': Operation not permitted
+    Error sending snapshot.
+
+This occurs on OSes where the kernel restricts mount operations, such that
+granting the **mount** right with `zfs allow` is insufficient.  A simple
+workaround is to run `zfs unmount `_`filesystem`_ on the target and then run
+`zfs-backup.sh` again.
+
+
 ## Property values
 Given the hierarchy `pool/a/b`,
 * with **fullpath** (`zfs recv -d`), this is replicated to `backupserver:backuppool/a/b`
