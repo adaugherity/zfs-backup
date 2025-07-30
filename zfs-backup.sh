@@ -82,12 +82,13 @@ REMZFS="$ZFS"
 
 
 usage() {
-    echo "Usage: $(basename $0) [ -nv ] [-r N ] [ [-f] cfg_file ]"
-    echo "  -n\t\tdebug (dry-run) mode"
-    echo "  -v\t\tverbose mode"
-    echo "  -f\t\tspecify a configuration file"
-    echo "  -r N\t\tuse the Nth most recent snapshot instead of the newest"
-    echo "If the configuration file is last option specified, the -f flag is optional."
+    exec 1>&2
+    printf "Usage: $(basename $0) [ -nv ] [-r N ] [ [-f] cfg_file ]\n"
+    printf "  -n\t\tdebug (dry-run) mode\n"
+    printf "  -v\t\tverbose mode\n"
+    printf "  -f\t\tspecify a configuration file\n"
+    printf "  -r N\t\tuse the Nth most recent snapshot instead of the newest\n"
+    printf "If the configuration file is last option specified, the -f flag is optional.\n"
     exit 1
 }
 # simple ordinal function, does not validate input
