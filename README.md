@@ -8,7 +8,7 @@ It supplements zfs-auto-snapshot (available as part of
 [zfstools](https://github.com/bdrewery/zfstools)), but runs independently.  I
 prefer that snapshots continue to be taken even if the backup fails.  It does
 not necessarily require that package -- anything that regularly generates
-snapshots that follow a given pattern will suffice.
+snapshots which follow a given pattern will suffice.
 
 
 ## Command-line options
@@ -118,25 +118,31 @@ Given the hierarchy `pool/a/b`,
 
 ## Common issues and solutions
 ### Catching up
-If this backup is not run for a long enough period that the newest
-remote snapshot has been removed locally, manually run an incremental
-`zfs send/recv` to bring it up to date, a la
+If this backup is not run for a long enough period that the newest remote
+snapshot has been removed locally (e.g. if you keep seven daily snapshots, and
+it's been eight days), manually run an incremental `zfs send/recv` to bring it
+up to date, a la
 ```
-  zfs send -I zfs-auto-snap_daily-(latest on remote) -R $POOL/$FS@zfs-auto-snap_daily-(latest local) |
+  zfs send -I zfs-auto-snap_(latest common) -R $POOL/$FS@zfs-auto-snap_(recent local) |
       ssh $REMUSER@REMHOST zfs recv -dvF $REMPOOL
 ```
-It's probably best to do a dry-run first (`zfs recv -ndvF`).
+Where "latest common" is the newest snapshot which exists on both machines,
+perhaps a weekly or monthly snapshot, and "recent local" is a newer snapshot,
+possibly the latest daily, or perhaps one from a day or two ago.  It's probably
+best to do a dry-run first (`zfs recv -ndvF`).
 
-**Note:** I use daily snapshots in these manual send/recv examples because
-it is less likely that the snapshot you are using will be rotated out
-in the middle of a send.  Also, note that ZFS will send all snapshots for a
-given filesystem before sending any for its children, rather than going in
-global date order.
+**Note:** Avoid snapshots which could be rotated out in the middle of a send
+(e.g. hourly, and in certain cases, daily).  Use `zfs list -t snap -S creation
+$POOL/$FS` and choose a "recent local" created before all short-lived
+snapshots.
+
+Also, note that ZFS will send all snapshots for a given filesystem before
+sending any for its children, rather than going in global date order.
 
 Alternatively, use a different tag (e.g. weekly) that still has common
 snapshots, possibly in combination with the `-r` option (Nth most recent) to
-avoid short-lived snapshots (e.g. hourly) being rotated out in the middle
-of your sync.  This is a good use case for an alternate configuration file.
+avoid short-lived snapshots being rotated out during your sync.  This is a good
+use case for an alternate configuration file.
 
 
 ### Received properties and sharing

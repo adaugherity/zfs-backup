@@ -6,14 +6,14 @@
 # backup script to replicate a ZFS filesystem and its children to another
 # server via zfs snapshots and zfs send/receive
 #
-# SMF manifests welcome!
+# SMF manifests/systemd units/etc. welcome!
 #
 # v0.4 (unreleased) - misc. fixes; portability & doc improvements
 # v0.3 - cmdline options and cfg file support
 # v0.2 - multiple datasets
 # v0.1 - initial working version
 
-# Copyright (c) 2009-22 Andrew Daugherity <adaugherity@tamu.edu>
+# Copyright (c) 2009-25 Andrew Daugherity <adaugherity@tamu.edu>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -57,7 +57,7 @@
 #   * find newest local hourly snapshot
 #   * find newest remote hourly snapshot (via ssh)
 #   * check that both $newest_local and $newest_remote snaps exist locally
-#   * zfs send incremental (-I) from $newest_remote to $newest_local to dsthost
+#   * zfs send incremental (-I) between $newest_remote and $newest_local to dsthost
 #   * if anything fails, set svc to maint. and exit
 
 # all of the following variables (except CFG) may be set in the config file
